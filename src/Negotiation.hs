@@ -1,45 +1,28 @@
-module Negotiation(parseNegotiationInput, generateNegotiationOutput) where
+module Negotiation (parseNegotiationInput, generateNegotiationOutput) where
 
-import qualified Data.ByteString as S
-
-data SocksVersion = V5 | V4 | UNKNOWN
-  deriving (Enum, Eq, Show)
-
-data AuthenticationMethod = NO_AUTHENTICATION | GSSAPI | USERNAME_PASSWORD | IANA_ASSIGNED | RESERVED | NO_ACCEPTABLE
-  deriving (Enum, Eq, Show)
+import Data.Word (Word8)
 
 data NegotiationMessage = NegotiationMessage
-  { version :: SocksVersion,
-    method :: [AuthenticationMethod],
-    tmp :: Int
+  { version :: Word8,
+    methods :: [Word8]
   }
   deriving (Show, Eq)
 
-parseNegotiationInput :: S.ByteString -> NegotiationMessage
+parseNegotiationInput :: [Word8] -> NegotiationMessage
 parseNegotiationInput payload = do
-  let unpacked = S.unpack payload
+  let version = extractVersion payload
+  let numberOfMethods = extractNumberOfMethods payload
+  let methods = extractMethods payload numberOfMethods
 
-  let v = extractVersion $ Just $ unpacked!!0
-  let numberOfMethods = extractNumberOfMethods $ Just $ unpacked!!1
-  let methods = map extractMethod $ map (\x -> Just $ unpacked!!x) [2..(1 + numberOfMethods)]
-
-  let message = NegotiationMessage v methods numberOfMethods
+  let message = NegotiationMessage version methods
   message
   where
-    extractVersion byte = case byte of
-      Just 5 -> V5
-      Just 4 -> V4
-      _ -> UNKNOWN
-    extractNumberOfMethods byte = case byte of
-      Just a -> fromIntegral a :: Int
-      _ -> 0 :: Int
-    extractMethod byte = case byte of
-      Just 0 -> NO_AUTHENTICATION
-      Just 1 -> GSSAPI
-      Just 2 -> USERNAME_PASSWORD
-      Just x | x >= 3 && x <= 127 -> IANA_ASSIGNED
-      Just x | x >= 128 && x <= 254 -> RESERVED
-      _ -> NO_ACCEPTABLE
+    extractVersion p = p !! 0
+    extractNumberOfMethods p = fromIntegral (p !! 1)
+    extractMethods p size = map (\x -> p !! x) [2 .. (1 + size)]
 
-generateNegotiationOutput :: NegotiationMessage -> S.ByteString
-generateNegotiationOutput _ = S.pack [5,0]
+generateNegotiationOutput :: NegotiationMessage -> [Word8]
+generateNegotiationOutput message = do
+  if elem 0 (methods message)
+    then [version message, 0]
+    else [version message, 255]

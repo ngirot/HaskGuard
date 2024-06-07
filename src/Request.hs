@@ -3,6 +3,8 @@ module Request where
 import qualified Data.ByteString as S
 
 data RequestMessage = RequestMessage
+  {
+  }
 
 parseRequestInput :: S.ByteString -> RequestMessage
 parseRequestInput payload = RequestMessage

@@ -6,7 +6,7 @@ import Request (generateRequestOutput, parseRequestInput)
 
 negotiate :: S.ByteString -> S.ByteString
 negotiate payload =
-  generateNegotiationOutput $ parseNegotiationInput payload
+  S.pack $ generateNegotiationOutput $ parseNegotiationInput (S.unpack payload)
 
 request :: S.ByteString -> S.ByteString
 request payload =
