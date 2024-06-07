@@ -9,7 +9,7 @@ import qualified Data.ByteString.Internal as DS
 import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
 
-import Lib (negotiate, request)
+import Lib (negotiate, request, address, port)
 
 main :: IO ()
 main = runTCPServer Nothing "4242" talk
@@ -26,19 +26,20 @@ main = runTCPServer Nothing "4242" talk
       putStrLn ">>> Request"
       msg <- recv s 1024
       print $ S.unpack msg
-      let r = request msg
+      let (r, connection) = request msg
+      print connection
       sendAll s r
       -- sendAll s msg
 
       putStrLn ">>> Forward"
       msg <- recv s 4096
       print $ S.unpack msg
-      runTCPClient "142.250.178.132" "80" $ \ss -> do
-        putStrLn "HERE"
+      runTCPClient (address connection) (port connection) $ \ss -> do
+        -- putStrLn "HERE"
         sendAll ss msg
         resp <- recv ss 4096
-        print $ S.unpack resp
-        print $ map DS.w2c $ S.unpack resp
+        -- print $ S.unpack resp
+        -- print $ map DS.w2c $ S.unpack resp
         sendAll s resp
 
 -- from the "network-run" package.
