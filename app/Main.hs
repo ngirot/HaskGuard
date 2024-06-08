@@ -20,7 +20,6 @@ main = runTCPServer Nothing "4242" talk
       putStrLn ">>> Negotiation"
       msg <- recv s 1024
       print $ S.unpack msg
-      print $ map DS.w2c $ S.unpack msg
 
       let d = negotiate msg
       sendAll s d
@@ -34,13 +33,9 @@ main = runTCPServer Nothing "4242" talk
 
       putStrLn ">>> Forward"
       runTCPClient (address connection) (port connection) $ \ss -> do
-        counter <- newEmptyMVar
-
-        forkIO $ stream ss s
         forkIO $ stream s ss
-
-        x <- takeMVar counter
-        x
+        stream ss s
+        putStrLn ">>> Completed"
 
 -- from the "network-run" package.
 runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
