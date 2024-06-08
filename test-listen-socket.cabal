@@ -28,6 +28,7 @@ library
       Lib
       Negotiation
       Request
+      Streaming
   other-modules:
       Paths_test_listen_socket
   autogen-modules:

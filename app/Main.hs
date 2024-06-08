@@ -8,8 +8,10 @@ import qualified Data.ByteString as S
 import qualified Data.ByteString.Internal as DS
 import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
-
+import Streaming(stream)
 import Lib (negotiate, request, address, port)
+import Control.Concurrent (forkIO, threadDelay)
+import Control.Concurrent.MVar (newEmptyMVar, takeMVar, putMVar)
 
 main :: IO ()
 main = runTCPServer Nothing "4242" talk
@@ -29,18 +31,16 @@ main = runTCPServer Nothing "4242" talk
       let (r, connection) = request msg
       print connection
       sendAll s r
-      -- sendAll s msg
 
       putStrLn ">>> Forward"
-      msg <- recv s 4096
-      print $ S.unpack msg
       runTCPClient (address connection) (port connection) $ \ss -> do
-        -- putStrLn "HERE"
-        sendAll ss msg
-        resp <- recv ss 4096
-        -- print $ S.unpack resp
-        -- print $ map DS.w2c $ S.unpack resp
-        sendAll s resp
+        counter <- newEmptyMVar
+
+        forkIO $ stream ss s
+        forkIO $ stream s ss
+
+        x <- takeMVar counter
+        x
 
 -- from the "network-run" package.
 runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
