@@ -27,6 +27,7 @@ library
   exposed-modules:
       Lib
       Negotiation
+      Payload
       Request
       Streaming
   other-modules:

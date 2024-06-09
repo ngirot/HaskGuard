@@ -1,8 +1,12 @@
 module Request where
 
+import Data.ByteString.Internal (w2c)
+import Data.Char
 import Data.List
 import Data.Word (Word8)
 import Debug.Trace
+import Numeric (showHex, showIntAtBase)
+import Payload
 
 data RequestMessage = RequestMessage
   { version :: Word8,
@@ -22,7 +26,9 @@ buildPort message = show $ (strong * 256) + weak
     p = port message
 
 buildIp :: RequestMessage -> String
-buildIp message = intercalate "." $ map show (address message)
+buildIp message = case (addressType message) of
+  1 -> intercalate "." $ map show (address message)
+  4 -> intercalate ":" $ map (\x -> showHex x "") $ doubleSize $ address message
   where
     value v = show $ v
 
