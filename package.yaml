@@ -1,10 +1,10 @@
-name:                test-listen-socket
-version:             0.1.0.0
-github:              "githubuser/test-listen-socket"
+name:                HaskGuard
+version:             0.1
+github:              "ngirot/HaskGuard"
 license:             BSD-3-Clause
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2024 Author name here"
+author:              "Nicolas Girot"
+maintainer:          "ngirot@hotmail.com"
+copyright:           "2024 Nicolas Girot"
 
 extra-source-files:
 - README.md
@@ -17,7 +17,7 @@ extra-source-files:
 # To avoid duplicated efforts in documentation and dealing with the
 # complications of embedding Haddock markup inside cabal files, it is
 # common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/test-listen-socket#readme>
+description:         Please see the README on GitHub at <https://github.com/ngirot/HaskGuard#readme>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -38,7 +38,7 @@ library:
   source-dirs: src
 
 executables:
-  test-listen-socket-exe:
+  HaskGuard-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -46,10 +46,10 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - test-listen-socket
+    - HaskGuard
 
 tests:
-  test-listen-socket-test:
+  HaskGuard-test:
     main:                Spec.hs
     source-dirs:         test
     ghc-options:
@@ -57,4 +57,4 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - test-listen-socket
+    - HaskGuard
