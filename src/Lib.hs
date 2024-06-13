@@ -1,8 +1,8 @@
 module Lib (negotiate, request, address, port) where
 
-import qualified Data.ByteString as S
 import Negotiation (generateNegotiationOutput, parseNegotiationInput)
 import Request (buildIp, buildPort, generateRequestOutput, parseRequestInput)
+import Data.Word (Word8)
 
 data Connection = Connection
   { address :: String,
@@ -10,13 +10,13 @@ data Connection = Connection
   }
   deriving (Show, Eq)
 
-negotiate :: S.ByteString -> S.ByteString
+negotiate :: [Word8] -> [Word8]
 negotiate payload =
-  S.pack $ generateNegotiationOutput $ parseNegotiationInput (S.unpack payload)
+  generateNegotiationOutput $ parseNegotiationInput payload
 
-request :: S.ByteString -> (S.ByteString, Connection)
+request :: [Word8] -> ([Word8], Connection)
 request payload = do
-  let message = parseRequestInput (S.unpack payload)
+  let message = parseRequestInput payload
   let connection = Connection (buildIp message) (buildPort message)
-  let resulPayload = S.pack $ generateRequestOutput $ message
+  let resulPayload = generateRequestOutput message
   (resulPayload, connection)

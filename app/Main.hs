@@ -15,15 +15,15 @@ main = runTCPServer Nothing "4242" talk
       msgNegociation <- recv s 1024
       print $ S.unpack msgNegociation
 
-      let d = negotiate msgNegociation
-      sendAll s d
+      let d = negotiate $ S.unpack msgNegociation
+      sendAll s $ S.pack d
 
       putStrLn ">>> Request"
       msgRequest <- recv s 1024
       print $ S.unpack msgRequest
-      let (r, connection) = request msgRequest
+      let (r, connection) = request $ S.unpack msgRequest
       print connection
-      sendAll s r
+      sendAll s $ S.pack r
 
       putStrLn ">>> Forward"
       runTCPClient (address connection) (port connection) $ \ss -> do
