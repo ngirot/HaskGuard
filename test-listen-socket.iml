@@ -28,5 +28,23 @@
     <orderEntry type="library" name="mtl-2.3.1" level="project" />
     <orderEntry type="library" name="stm-2.5.1.0" level="project" />
     <orderEntry type="library" name="transformers-0.6.1.0" level="project" />
+    <orderEntry type="library" name="hspec-2.11.9" level="project" />
+    <orderEntry type="library" name="QuickCheck-2.14.3" level="project" />
+    <orderEntry type="library" name="hspec-core-2.11.9" level="project" />
+    <orderEntry type="library" name="hspec-discover-2.11.9" level="project" />
+    <orderEntry type="library" name="hspec-expectations-0.8.4" level="project" />
+    <orderEntry type="library" name="containers-0.6.7" level="project" />
+    <orderEntry type="library" name="random-1.2.1.2" level="project" />
+    <orderEntry type="library" name="splitmix-0.1.0.5" level="project" />
+    <orderEntry type="library" name="HUnit-1.6.2.0" level="project" />
+    <orderEntry type="library" name="ansi-terminal-1.0.2" level="project" />
+    <orderEntry type="library" name="call-stack-0.4.0" level="project" />
+    <orderEntry type="library" name="haskell-lexer-1.1.1" level="project" />
+    <orderEntry type="library" name="process-1.6.19.0" level="project" />
+    <orderEntry type="library" name="quickcheck-io-0.2.0" level="project" />
+    <orderEntry type="library" name="tf-random-0.5" level="project" />
+    <orderEntry type="library" name="ansi-terminal-types-0.11.5" level="project" />
+    <orderEntry type="library" name="colour-2.3.6" level="project" />
+    <orderEntry type="library" name="primitive-0.8.0.0" level="project" />
   </component>
 </module>
