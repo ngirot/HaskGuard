@@ -18,8 +18,14 @@ parseNegotiationInput payload = do
   message
   where
     extractVersion p = p !! 0
-    extractNumberOfMethods p = fromIntegral (p !! 1)
-    extractMethods p size = map (\x -> p !! x) [2 .. (1 + size)]
+    extractNumberOfMethods p =
+      if length p > 1
+        then fromIntegral (p !! 1)
+        else 0
+    extractMethods p size =
+      if length p == size + 2
+        then map (\x -> p !! x) [2 .. (1 + size)]
+        else []
 
 generateNegotiationOutput :: NegotiationMessage -> [Word8]
 generateNegotiationOutput message = do
