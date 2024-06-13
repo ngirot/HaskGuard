@@ -57,4 +57,5 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - hspec >=2.11.9
     - HaskGuard
