@@ -1,4 +1,4 @@
-module Lib (negotiate, request, address, port) where
+module Lib (negotiate, request, address, port, Connection(..)) where
 
 import Negotiation (generateNegotiationOutput, parseNegotiationInput)
 import Request (buildIp, buildPort, generateRequestOutput, parseRequestInput)
