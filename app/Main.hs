@@ -19,12 +19,7 @@ main = do
     Left (ConfigurationNotAccessible e) -> putStrLn $ "Unable to load configuration " ++ show e
     Left (BadConfiguration e) -> putStrLn $ "Bad configuration " ++ show e
   where
-    talk s = do
-      putStrLn ">>> Negotiation"
-      msgNegociation <- recv s 1024
-      print $ S.unpack msgNegociation
-
-      let d = negotiate $ S.unpack msgNegociation
+    afterNego s d = do
       sendAll s $ S.pack d
 
       putStrLn ">>> Request"
@@ -39,5 +34,14 @@ main = do
         _ <- forkIO $ stream s ss
         stream ss s
         putStrLn ">>> Completed"
+    talk s = do
+      putStrLn ">>> Negotiation"
+      msgNegociation <- recv s 1024
+      print $ S.unpack msgNegociation
+
+      let nego = negotiate $ S.unpack msgNegociation
+      case (nego) of
+        Right d -> afterNego s d
+        Left err -> putStrLn $ "Error: " ++ err
 
 -- from the "network-run" package.

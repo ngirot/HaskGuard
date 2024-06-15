@@ -8,24 +8,23 @@ data NegotiationMessage = NegotiationMessage
   }
   deriving (Show, Eq)
 
-parseNegotiationInput :: [Word8] -> NegotiationMessage
+parseNegotiationInput :: [Word8] -> Either String NegotiationMessage
 parseNegotiationInput payload = do
   let version = extractVersion payload
-  let numberOfMethods = extractNumberOfMethods payload
-  let methods = extractMethods payload numberOfMethods
+  let methods = extractNumberOfMethods payload >>= extractMethods payload
 
-  let message = NegotiationMessage version methods
+  let message = NegotiationMessage version <$> methods
   message
   where
     extractVersion p = p !! 0
     extractNumberOfMethods p =
       if length p > 1
-        then fromIntegral (p !! 1)
-        else 0
+        then Right $ fromIntegral (p !! 1)
+        else Left "Payload has invalid size"
     extractMethods p size =
       if length p == size + 2
-        then map (\x -> p !! x) [2 .. (1 + size)]
-        else []
+        then Right $ map (\x -> p !! x) [2 .. (1 + size)]
+        else Left "Payload has invalid size"
 
 generateNegotiationOutput :: NegotiationMessage -> [Word8]
 generateNegotiationOutput message = do
