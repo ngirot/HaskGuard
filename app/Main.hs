@@ -19,21 +19,25 @@ main = do
     Left (ConfigurationNotAccessible e) -> putStrLn $ "Unable to load configuration " ++ show e
     Left (BadConfiguration e) -> putStrLn $ "Bad configuration " ++ show e
   where
+    afterRequest s r connection = do
+      print connection
+      sendAll s $ S.pack r
+  
+      putStrLn ">>> Forward"
+      runTCPClient (address connection) (port connection) $ \ss -> do
+        _ <- forkIO $ stream s ss
+        stream ss s
+        putStrLn ">>> Completed"
     afterNego s d = do
       sendAll s $ S.pack d
 
       putStrLn ">>> Request"
       msgRequest <- recv s 1024
       print $ S.unpack msgRequest
-      let (r, connection) = request $ S.unpack msgRequest
-      print connection
-      sendAll s $ S.pack r
-
-      putStrLn ">>> Forward"
-      runTCPClient (address connection) (port connection) $ \ss -> do
-        _ <- forkIO $ stream s ss
-        stream ss s
-        putStrLn ">>> Completed"
+      let req = request $ S.unpack msgRequest
+      case req of
+        Right (r, connection) -> afterRequest s r connection
+        Left err -> putStr $ "Error: " ++ err
     talk s = do
       putStrLn ">>> Negotiation"
       msgNegociation <- recv s 1024

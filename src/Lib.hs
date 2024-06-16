@@ -1,8 +1,9 @@
 module Lib (negotiate, request, Connection (..)) where
 
+import Data.Either
 import Data.Word (Word8)
 import Negotiation (generateNegotiationOutput, parseNegotiationInput)
-import Request (buildIp, buildPort, generateRequestOutput, parseRequestInput)
+import Request (RequestMessage (..), buildIp, buildPort, generateRequestOutput, parseRequestInput)
 
 data Connection = Connection
   { address :: String,
@@ -14,9 +15,12 @@ negotiate :: [Word8] -> Either String [Word8]
 negotiate payload =
   generateNegotiationOutput <$> parseNegotiationInput payload
 
-request :: [Word8] -> ([Word8], Connection)
+request :: [Word8] -> Either String ([Word8], Connection)
 request payload = do
   let message = parseRequestInput payload
-  let connection = Connection (buildIp message) (buildPort message)
-  let resulPayload = generateRequestOutput message
-  (resulPayload, connection)
+  case message of
+    Right m -> do
+      let connection = Connection (buildIp m) (buildPort m)
+      let resulPayload = generateRequestOutput m
+      Right (resulPayload, connection)
+    Left s -> Left s
