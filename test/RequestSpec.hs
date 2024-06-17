@@ -23,7 +23,7 @@ connectIpv6 =
     it "Should accept ipv6" $ request [5, 1, 0, 4, 32, 1, 13, 184, 133, 163, 0, 0, 0, 0, 138, 46, 3, 112, 115, 52, 1, 187] `shouldBe` Right ([5, 0, 0, 4, 32, 1, 13, 184, 133, 163, 0, 0, 0, 0, 138, 46, 3, 112, 115, 52, 1, 187], Connection "2001:db8:85a3:0:0:8a2e:370:7334" "443")
     it "Should reject payload with no command" $ request [5] `shouldBe` Left "Invalid payload size"
     it "Should reject payload with invalid ipv6 size" $ request [5, 1, 0, 1, 32, 1, 13, 184, 133, 163, 0, 0, 0, 0, 138, 46, 3, 112, 115, 1, 187] `shouldBe` Left "Invalid payload size"
-    it "Should reject payload with invalid por6 size" $ request [5, 1, 0, 1, 32, 1, 13, 184, 133, 163, 0, 0, 0, 0, 138, 46, 3, 112, 115, 52, 187] `shouldBe` Left "Invalid payload size"
+    it "Should reject payload with invalid port size" $ request [5, 1, 0, 1, 32, 1, 13, 184, 133, 163, 0, 0, 0, 0, 138, 46, 3, 112, 115, 52, 187] `shouldBe` Left "Invalid payload size"
 
 connectDomainName :: Spec
 connectDomainName =
