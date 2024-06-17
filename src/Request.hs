@@ -1,5 +1,6 @@
 module Request (buildPort, buildIp, parseRequestInput, generateRequestOutput, RequestMessage (..)) where
 
+import qualified Data.ByteString.Internal as BS (c2w, w2c)
 import Data.List (intercalate)
 import Data.Word (Word8)
 import Numeric (showHex)
@@ -26,6 +27,7 @@ buildIp :: RequestMessage -> String
 buildIp message = case (addressType message) of
   1 -> intercalate "." $ map show (address message)
   4 -> intercalate ":" $ map (\x -> showHex x "") $ doubleSize $ address message
+  3 -> map BS.w2c (address message)
 
 parseRequestInput :: [Word8] -> Either String RequestMessage
 parseRequestInput payload = do
@@ -53,7 +55,9 @@ parseRequestInput payload = do
         if length payload == 22
           then Right $ take (length p -2 - 4) $ drop 4 p
           else Left "Invalid payload size"
-      _ -> Left "Invalid adress type"
+      _ -> if length payload > 7
+           then Right $ take (length p -2 - 4) $ drop 4 p
+           else Left "Invalid payload size"
 
 generateRequestOutput :: RequestMessage -> [Word8]
 generateRequestOutput message = do
