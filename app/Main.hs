@@ -5,6 +5,7 @@ import Control.Concurrent (forkIO)
 import qualified Data.ByteString as S
 import Lib (address, negotiate, port, request)
 import Loader
+import Lib (address, negotiate, port, request, RequestError(..))
 import Network
 import Network.Socket.ByteString (recv, sendAll)
 import Streaming (stream)
@@ -22,7 +23,7 @@ main = do
     afterRequest s r connection = do
       print connection
       sendAll s $ S.pack r
-  
+
       putStrLn ">>> Forward"
       runTCPClient (address connection) (port connection) $ \ss -> do
         _ <- forkIO $ stream s ss
@@ -37,7 +38,8 @@ main = do
       let req = request $ S.unpack msgRequest
       case req of
         Right (r, connection) -> afterRequest s r connection
-        Left err -> putStr $ "Error: " ++ err
+        Left (NoResponseError err) -> putStr $ "Error: " ++ err
+        Left (ResponseError response) -> sendAll s $ S.pack $ response
     talk s = do
       putStrLn ">>> Negotiation"
       msgNegociation <- recv s 1024

@@ -1,8 +1,9 @@
 module Request (buildPort, buildIp, parseRequestInput, generateRequestOutput, RequestMessage (..)) where
 
-import qualified Data.ByteString.Internal as BS (c2w, w2c)
+import qualified Data.ByteString.Internal as BS (w2c)
 import Data.List (intercalate)
 import Data.Word (Word8)
+import Errors (RequestError (..))
 import Numeric (showHex)
 import Payload
 
@@ -16,18 +17,18 @@ data RequestMessage = RequestMessage
   deriving (Show, Eq)
 
 buildPort :: RequestMessage -> String
--- buildPort message = show $ (((p !! 0) * 255) + p !! 1)
 buildPort message = show $ (strong * 256) + weak
   where
     weak = fromIntegral $ p !! 1
     strong = fromIntegral $ p !! 0
     p = port message
 
-buildIp :: RequestMessage -> String
+buildIp :: RequestMessage -> Either RequestError String
 buildIp message = case (addressType message) of
-  1 -> intercalate "." $ map show (address message)
-  4 -> intercalate ":" $ map (\x -> showHex x "") $ doubleSize $ address message
-  3 -> map BS.w2c (address message)
+  1 -> Right $ intercalate "." $ map show (address message)
+  4 -> Right $ intercalate ":" $ map (\x -> showHex x "") $ doubleSize $ address message
+  3 -> Right $ map BS.w2c (address message)
+  _ -> Left $ ResponseError $ generateErrorOutput message 8
 
 parseRequestInput :: [Word8] -> Either String RequestMessage
 parseRequestInput payload = do
@@ -55,10 +56,16 @@ parseRequestInput payload = do
         if length payload == 22
           then Right $ take (length p -2 - 4) $ drop 4 p
           else Left "Invalid payload size"
-      _ -> if length payload > 7
-           then Right $ take (length p -2 - 4) $ drop 4 p
-           else Left "Invalid payload size"
+      _ ->
+        if length payload > 7
+          then Right $ take (length p -2 - 4) $ drop 4 p
+          else Left "Invalid payload size"
 
 generateRequestOutput :: RequestMessage -> [Word8]
-generateRequestOutput message = do
-  [version message, 0, 0, (addressType message)] ++ (address message) ++ (port message)
+generateRequestOutput message = generateOutput message 0
+
+generateErrorOutput :: RequestMessage -> Word8 -> [Word8]
+generateErrorOutput message code = generateOutput message code
+
+generateOutput :: RequestMessage -> Word8 -> [Word8]
+generateOutput message code = [version message, code, 0, (addressType message)] ++ (address message) ++ (port message)

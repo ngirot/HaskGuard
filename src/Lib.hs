@@ -1,9 +1,9 @@
-module Lib (negotiate, request, Connection (..)) where
+module Lib (negotiate, request, Connection (..), RequestError (..)) where
 
-import Data.Either
 import Data.Word (Word8)
+import Errors
 import Negotiation (generateNegotiationOutput, parseNegotiationInput)
-import Request (RequestMessage (..), buildIp, buildPort, generateRequestOutput, parseRequestInput)
+import Request (buildIp, buildPort, generateRequestOutput, parseRequestInput)
 
 data Connection = Connection
   { address :: String,
@@ -15,12 +15,14 @@ negotiate :: [Word8] -> Either String [Word8]
 negotiate payload =
   generateNegotiationOutput <$> parseNegotiationInput payload
 
-request :: [Word8] -> Either String ([Word8], Connection)
+request :: [Word8] -> Either RequestError ([Word8], Connection)
 request payload = do
   let message = parseRequestInput payload
   case message of
     Right m -> do
-      let connection = Connection (buildIp m) (buildPort m)
+      let ip = buildIp m
+      let connection = (\i -> Connection i (buildPort m)) <$> ip
+
       let resulPayload = generateRequestOutput m
-      Right (resulPayload, connection)
-    Left s -> Left s
+      (\c -> (resulPayload, c)) <$> connection
+    Left s -> Left $ NoResponseError s
