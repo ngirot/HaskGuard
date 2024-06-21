@@ -38,7 +38,7 @@ main = do
       let req = request $ S.unpack msgRequest
       case req of
         Right (r, connection) -> afterRequest s r connection
-        Left (NoResponseError err) -> putStr $ "Error: " ++ err
+        Left (NoResponseError err) -> putStrLn $ "Error: " ++ err
         Left (ResponseError response) -> sendAll s $ S.pack $ response
     talk s = do
       putStrLn ">>> Negotiation"
