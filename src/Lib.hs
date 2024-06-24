@@ -1,9 +1,10 @@
-module Lib (negotiate, request, Connection (..), RequestError (..)) where
+module Lib (negotiate, request, errorResponse, Connection (..), RequestError (..)) where
 
 import Data.Word (Word8)
 import Errors
-import Negotiation (generateNegotiationOutput, parseNegotiationInput)
-import Request (buildIp, buildPort, generateRequestOutput, parseRequestInput)
+import Negotiation (generateNegotiationOutput2)
+import Payload
+import Request (RequestMessage (..), buildIp, buildPort, generateErrorOutput, generateRequestOutput)
 
 data Connection = Connection
   { address :: String,
@@ -11,11 +12,10 @@ data Connection = Connection
   }
   deriving (Show, Eq)
 
-negotiate :: [Word8] -> Either String [Word8]
-negotiate payload =
-  generateNegotiationOutput <$> parseNegotiationInput payload
+negotiate :: [Word8] -> Either RequestError [Word8]
+negotiate payload = generateNegotiationOutput2 payload
 
-request :: [Word8] -> Either RequestError ([Word8], Connection)
+request :: [Word8] -> Either RequestError ([Word8], Connection, RequestMessage)
 request payload = do
   let message = parseRequestInput payload
   case message of
@@ -24,5 +24,9 @@ request payload = do
       let connection = (\i -> Connection i (buildPort m)) <$> ip
 
       let resulPayload = generateRequestOutput m
-      (\c -> (resulPayload, c)) <$> connection
+      (\c -> (resulPayload, c, m)) <$> connection
     Left s -> Left $ NoResponseError s
+
+errorResponse :: RequestMessage -> NetworkError -> [Word8]
+errorResponse message err = case err of
+  NameOrServiceNotKnown -> generateErrorOutput message 4

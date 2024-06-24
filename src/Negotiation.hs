@@ -1,33 +1,16 @@
-module Negotiation (parseNegotiationInput, generateNegotiationOutput) where
+module Negotiation (generateNegotiationOutput2) where
 
+import Control.Arrow (left)
 import Data.Word (Word8)
+import Errors
+import Payload
+import Protocol
 
-data NegotiationMessage = NegotiationMessage
-  { version :: Word8,
-    methods :: [Word8]
-  }
-  deriving (Show, Eq)
-
-parseNegotiationInput :: [Word8] -> Either String NegotiationMessage
-parseNegotiationInput payload = do
-  let version = extractVersion payload
-  let methods = extractNumberOfMethods payload >>= extractMethods payload
-
-  let message = NegotiationMessage version <$> methods
-  message
+generateNegotiationOutput2 :: [Word8] -> Either RequestError [Word8]
+generateNegotiationOutput2 payload = do
+  let code = input >>= generateCode
+  generatePayload <$> input <*> code
   where
-    extractVersion p = p !! 0
-    extractNumberOfMethods p =
-      if length p > 1
-        then Right $ fromIntegral (p !! 1)
-        else Left "Payload has invalid size"
-    extractMethods p size =
-      if length p == size + 2
-        then Right $ map (\x -> p !! x) [2 .. (1 + size)]
-        else Left "Payload has invalid size"
-
-generateNegotiationOutput :: NegotiationMessage -> [Word8]
-generateNegotiationOutput message = do
-  if elem 0 (methods message)
-    then [version message, 0]
-    else [version message, 255]
+    input = left (\message -> NoResponseError message) $ parseNegotiationInput payload
+    generateCode i = left (\code -> ResponseError $ generateNegotiationOutput i code) $ findNegotiationReturnCode i
+    generatePayload i code = generateNegotiationOutput i code

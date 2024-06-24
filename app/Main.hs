@@ -5,7 +5,7 @@ import Control.Concurrent (forkIO)
 import qualified Data.ByteString as S
 import Lib (address, negotiate, port, request)
 import Loader
-import Lib (address, negotiate, port, request, RequestError(..))
+import Lib (address, negotiate, port, request, errorResponse, RequestError(..))
 import Network
 import Network.Socket.ByteString (recv, sendAll)
 import Streaming (stream)
@@ -20,15 +20,20 @@ main = do
     Left (ConfigurationNotAccessible e) -> putStrLn $ "Unable to load configuration " ++ show e
     Left (BadConfiguration e) -> putStrLn $ "Bad configuration " ++ show e
   where
-    afterRequest s r connection = do
+    afterRequest s r connection message = do
       print connection
-      sendAll s $ S.pack r
 
       putStrLn ">>> Forward"
-      runTCPClient (address connection) (port connection) $ \ss -> do
+      clientResp <- runTCPClient (address connection) (port connection) $ \ss -> do
+        sendAll s $ S.pack r
         _ <- forkIO $ stream s ss
         stream ss s
         putStrLn ">>> Completed"
+      case clientResp of
+        Right _ -> putStrLn "Ok"
+        Left er -> do
+          putStrLn "Send error payload"
+          sendAll s $ S.pack $ errorResponse message er
     afterNego s d = do
       sendAll s $ S.pack d
 
@@ -37,7 +42,7 @@ main = do
       print $ S.unpack msgRequest
       let req = request $ S.unpack msgRequest
       case req of
-        Right (r, connection) -> afterRequest s r connection
+        Right (r, connection, message) -> afterRequest s r connection message
         Left (NoResponseError err) -> putStrLn $ "Error: " ++ err
         Left (ResponseError response) -> sendAll s $ S.pack $ response
     talk s = do
@@ -48,6 +53,6 @@ main = do
       let nego = negotiate $ S.unpack msgNegociation
       case (nego) of
         Right d -> afterNego s d
-        Left err -> putStrLn $ "Error: " ++ err
-
+        Left (NoResponseError err) -> putStrLn $ "Error: " ++ err
+        Left (ResponseError response) -> sendAll s $ S.pack $ response
 -- from the "network-run" package.
