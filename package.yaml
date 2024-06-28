@@ -23,6 +23,8 @@ dependencies:
 - base >= 4.7 && < 5
 - network == 3.1.4.0
 - bytestring == 0.11.5.3
+- config-ini == 0.2.7.0
+- text == 2.0.2 # Needed for config-ini
 ghc-options:
 - -Wall
 - -Wcompat
