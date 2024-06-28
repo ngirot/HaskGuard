@@ -1,13 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Config (configParser, ServerConfiguration (..)) where
+module Config (configParser, ServerConfiguration (..), defaultConfiguration) where
 
 import Data.Ini.Config
 import Data.Maybe
-import Data.Text (Text)
+import Data.Text (pack, unpack)
 
 data ServerConfiguration = ServerConfiguration
-  { scListen :: Text,
+  { scListen :: String,
     scPort :: Int
   }
   deriving (Eq, Show)
@@ -16,7 +16,8 @@ configParser :: IniParser ServerConfiguration
 configParser = fmap (fromMaybe defaultConfiguration) $
   sectionMb "SERVER" $ do
     port <- fromMaybe (scPort defaultConfiguration) <$> fieldMbOf "port" number
-    listen <- fromMaybe (scListen defaultConfiguration) <$> fieldMb "listen"
-    return ServerConfiguration {scListen = listen, scPort = port}
-  where
-    defaultConfiguration = ServerConfiguration {scListen = "localhost", scPort = 3128}
+    listen <- fromMaybe (pack $ scListen defaultConfiguration) <$> fieldMb "listen"
+    return ServerConfiguration {scListen = unpack listen, scPort = port}
+
+defaultConfiguration :: ServerConfiguration
+defaultConfiguration = ServerConfiguration {scListen = "localhost", scPort = 3128}

@@ -1,7 +1,7 @@
 module Network(runTCPServer, runTCPClient) where
   
 import qualified Control.Exception as E
-import Control.Monad (forever, void)
+import Control.Monad (forever, void, mfilter)
 import Network.Socket
 import Control.Concurrent (forkFinally)
   
@@ -15,7 +15,7 @@ runTCPServer mhost port server = withSocketsDo $ do
                 addrFlags = [AI_PASSIVE]
               , addrSocketType = Stream
               }
-        head <$> getAddrInfo (Just hints) mhost (Just port)
+        head <$> getAddrInfo (Just hints) realHost (Just port)
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
         setSocketOption sock ReuseAddr 1
         withFdSocket sock setCloseOnExecIfNeeded
@@ -29,6 +29,7 @@ runTCPServer mhost port server = withSocketsDo $ do
             -- non-atomic setups (e.g. spawning a subprocess to handle
             -- @conn@) before proper cleanup of @conn@ is your case
             forkFinally (server conn) (const $ gracefulClose conn 5000)
+    realHost = mfilter (/= "0.0.0.0") mhost
 
 runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO a
 runTCPClient host port client = withSocketsDo $ do

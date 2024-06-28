@@ -1,14 +1,23 @@
 module Main (main) where
 
+import Config
 import Control.Concurrent (forkIO)
 import qualified Data.ByteString as S
 import Lib (address, negotiate, port, request)
+import Loader
 import Network
 import Network.Socket.ByteString (recv, sendAll)
 import Streaming (stream)
 
 main :: IO ()
-main = runTCPServer Nothing "4242" talk
+main = do
+  loadedConf <- load
+  case loadedConf of
+    Right conf -> do
+      putStrLn $ "Start listening " ++ (scListen conf) ++ ":" ++ (show $ scPort conf) ++ "..."
+      runTCPServer (Just $ scListen conf) (show $ scPort conf) talk
+    Left (ConfigurationNotAccessible e) -> putStrLn $ "Unable to load configuration " ++ show e
+    Left (BadConfiguration e) -> putStrLn $ "Bad configuration " ++ show e
   where
     talk s = do
       putStrLn ">>> Negotiation"
