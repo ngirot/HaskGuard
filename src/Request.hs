@@ -1,33 +1,53 @@
-module Request (buildPort, buildIp, parseRequestInput, generateErrorOutput, generateRequestOutput, RequestMessage (..)) where
+module Request (generateRequestOutput2, RequestMessage (..)) where
 
-import qualified Data.ByteString.Internal as BS (w2c)
-import Data.List (intercalate)
+import Control.Arrow (left)
+import qualified Data.ByteString as S
 import Data.Word (Word8)
-import Errors (RequestError (..))
-import Numeric (showHex)
+import Errors
+import Network
+import Network.Socket
+import Network.Socket.ByteString (recv, sendAll)
 import Payload
+import Protocol
 
+generateRequestOutput2 :: [Word8] -> (Socket -> IO ()) -> IO (Either RequestError ())
+generateRequestOutput2 payload onConnect = do
+  let host = input >>= generateHost
+  let port = generatePort <$> input
+  -- ttt <- runTCPClient <$> host <*> port <*> Right (\_ -> putStrLn "HERE")
+  let ttt = cli <$> input <*> host <*> port <*> Right onConnect
+  --let xxx = generateNetworkError <$> input <*> Right NameOrServiceNotKnown
 
-buildPort :: RequestMessage -> String
-buildPort message = show $ (strong * 256) + weak
+  -- let vvv = left (\ne -> generateNetworkError <$> input <*> Right ne) ttt
+  --case ttt of
+  --  Right _ -> Left $ NoResponseError "nope"
+  --  Left _ -> Left $ NoResponseError "nope"
+
+  case ttt of
+    Right x -> do
+      vvv <- x
+      case vvv of
+        Right x1 -> pure $ Right x1
+        Left e1 -> pure $ Left $ e1
+    Left vb -> pure $ Left vb
   where
-    weak = fromIntegral $ p !! 1
-    strong = fromIntegral $ p !! 0
-    p = requestPort message
+    -- Left $ NoResponseError "nope"
 
-buildIp :: RequestMessage -> Either RequestError String
-buildIp message = case (requestAddressType message) of
-  1 -> Right $ intercalate "." $ map show (requestAddress message)
-  4 -> Right $ intercalate ":" $ map (\x -> showHex x "") $ doubleSize $ requestAddress message
-  3 -> Right $ map BS.w2c (requestAddress message)
-  _ -> Left $ ResponseError $ generateErrorOutput message 8
+    --case ttt of
+    --    Right a -> case a of
+    --      Right a1 -> Right a1
+    --      Left a2 -> Left a2
+    --    Left _ -> Left $ NoResponseError "test"
 
+    --case ttt of
+    --  Right _ -> Nothing
+    --  Left _ -> case xxx of
+    --    Right e -> Just $ ResponseError e
+    --    Left _ -> Nothing
 
-generateRequestOutput :: RequestMessage -> [Word8]
-generateRequestOutput message = generateOutput message 0
-
-generateErrorOutput :: RequestMessage -> Word8 -> [Word8]
-generateErrorOutput message code = generateOutput message code
-
-generateOutput :: RequestMessage -> Word8 -> [Word8]
-generateOutput message code = [requestVersion message, code, 0, (requestAddressType message)] ++ (requestAddress message) ++ (requestPort message)
+    input = left (\message -> NoResponseError message) $ parseRequestInput payload
+    generateCommand i = left (\code -> ResponseError $ generateRequestOutput i code) $ findCommand i
+    generateHost i = left (\code -> ResponseError $ generateRequestOutput i code) $ findHost i
+    generatePort i = findPort i
+    generateNetworkError i err = ResponseError $ generateRequestOutput i $ findNetworkErrorCode err
+    cli i host port f = left (\e -> generateNetworkError i e) <$> runTCPClient host port f

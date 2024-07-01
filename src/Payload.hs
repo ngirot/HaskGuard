@@ -1,4 +1,4 @@
-module Payload (NegotiationMessage (..), RequestMessage (..), parseNegotiationInput, parseRequestInput, doubleSize, generateNegotiationOutput) where
+module Payload (NegotiationMessage (..), RequestMessage (..), parseNegotiationInput, parseRequestInput, doubleSize, generateNegotiationOutput, generateRequestOutput) where
 
 import Data.Word (Word8)
 
@@ -67,6 +67,9 @@ parseRequestInput payload = do
         if length payload > 7
           then Right $ take (length p -2 - 4) $ drop 4 p
           else Left "Invalid payload size"
+
+generateRequestOutput :: RequestMessage -> Word8 -> [Word8]
+generateRequestOutput message code = [requestVersion message, code, 0, (requestAddressType message)] ++ (requestAddress message) ++ (requestPort message)
 
 doubleSize :: [Word8] -> [Int]
 doubleSize content = do

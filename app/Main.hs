@@ -9,6 +9,7 @@ import Lib (address, negotiate, port, request, errorResponse, RequestError(..))
 import Network
 import Network.Socket.ByteString (recv, sendAll)
 import Streaming (stream)
+import Request
 
 main :: IO ()
 main = do
@@ -20,15 +21,16 @@ main = do
     Left (ConfigurationNotAccessible e) -> putStrLn $ "Unable to load configuration " ++ show e
     Left (BadConfiguration e) -> putStrLn $ "Bad configuration " ++ show e
   where
+    onConnect s r ss = do
+      sendAll s $ S.pack r
+      _ <- forkIO $ stream s ss
+      stream ss s
+      putStrLn ">>> Completed"
     afterRequest s r connection message = do
       print connection
 
       putStrLn ">>> Forward"
-      clientResp <- runTCPClient (address connection) (port connection) $ \ss -> do
-        sendAll s $ S.pack r
-        _ <- forkIO $ stream s ss
-        stream ss s
-        putStrLn ">>> Completed"
+      clientResp <- runTCPClient (address connection) (port connection) $ (onConnect s r)
       case clientResp of
         Right _ -> putStrLn "Ok"
         Left er -> do
@@ -39,6 +41,7 @@ main = do
 
       putStrLn ">>> Request"
       msgRequest <- recv s 1024
+
       print $ S.unpack msgRequest
       let req = request $ S.unpack msgRequest
       case req of
