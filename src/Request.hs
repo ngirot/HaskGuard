@@ -1,27 +1,18 @@
 module Request (buildPort, buildIp, parseRequestInput, generateErrorOutput, generateRequestOutput, RequestMessage (..)) where
 
-import qualified Data.ByteString.Internal as BS (w2c)
-import Data.List (intercalate)
+import Control.Arrow
 import Data.Word (Word8)
 import Errors (RequestError (..))
-import Numeric (showHex)
 import Payload
-
+import Protocol
 
 buildPort :: RequestMessage -> String
-buildPort message = show $ (strong * 256::Int) + weak
-  where
-    weak = fromIntegral $ p !! 1
-    strong = fromIntegral $ p !! 0
-    p = requestPort message
+buildPort = findPort
 
 buildIp :: RequestMessage -> Either RequestError String
-buildIp message = case (requestAddressType message) of
-  1 -> Right $ intercalate "." $ map show (requestAddress message)
-  4 -> Right $ intercalate ":" $ map (\x -> showHex x "") $ doubleSize $ requestAddress message
-  3 -> Right $ map BS.w2c (requestAddress message)
-  _ -> Left $ ResponseError $ generateErrorOutput message 8
-
+buildIp message = left mapError $ findIp message
+  where
+    mapError code = ResponseError $ generateErrorOutput message code
 
 generateRequestOutput :: RequestMessage -> [Word8]
 generateRequestOutput message = generateOutput message 0
