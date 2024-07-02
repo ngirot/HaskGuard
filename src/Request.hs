@@ -9,7 +9,7 @@ import Payload
 
 
 buildPort :: RequestMessage -> String
-buildPort message = show $ (strong * 256) + weak
+buildPort message = show $ (strong * 256::Int) + weak
   where
     weak = fromIntegral $ p !! 1
     strong = fromIntegral $ p !! 0

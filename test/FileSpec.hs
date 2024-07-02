@@ -1,4 +1,4 @@
-module FileSpec where
+module FileSpec(spec) where
 
 import File
 import Test.Hspec

@@ -1,4 +1,4 @@
-module PayloadSpec where
+module PayloadSpec(spec) where
 
 import Payload
 import Test.Hspec

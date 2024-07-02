@@ -3,9 +3,8 @@ module Main (main) where
 import Config
 import Control.Concurrent (forkIO)
 import qualified Data.ByteString as S
-import Lib (address, negotiate, port, request)
 import Loader
-import Lib (address, negotiate, port, request, errorResponse, RequestError(..))
+import Lib (address, port, negotiate, request, errorResponse, RequestError(..))
 import Network
 import Network.Socket.ByteString (recv, sendAll)
 import Streaming (stream)

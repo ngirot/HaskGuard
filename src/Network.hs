@@ -39,16 +39,13 @@ runTCPServer mhost port server = withSocketsDo $ do
 
 runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO (Either NetworkError a)
 runTCPClient host port client = withSocketsDo $ do
-  addr <- resolve2
+  addr <- resolve
   case addr of
-    Right r -> fmap Right $ ooo r
+    Right r -> Right <$> ooo r
     Left x -> pure $ Left x
   where
     ooo a = E.bracket (open a) close client
     resolve = do
-      let hints = defaultHints {addrSocketType = Stream}
-      fmap Right $ head <$> getAddrInfo (Just hints) (Just host) (Just port)
-    resolve2 = do
       let hints = defaultHints {addrSocketType = Stream}
       e <- E.try @E.IOException $ getAddrInfo (Just hints) (Just host) (Just port)
       case e of

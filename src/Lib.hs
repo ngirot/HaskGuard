@@ -4,7 +4,7 @@ import Data.Word (Word8)
 import Errors
 import Negotiation (generateNegotiationOutput2)
 import Payload
-import Request (RequestMessage (..), buildIp, buildPort, generateErrorOutput, generateRequestOutput)
+import Request (buildIp, buildPort, generateErrorOutput, generateRequestOutput)
 
 data Connection = Connection
   { address :: String,

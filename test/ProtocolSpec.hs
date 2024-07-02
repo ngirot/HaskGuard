@@ -1,4 +1,4 @@
-module ProtocolSpec where
+module ProtocolSpec(spec) where
 
 import Payload
 import Protocol
