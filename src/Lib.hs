@@ -5,6 +5,10 @@ import Errors
 import Negotiation (generateNegotiationOutput2)
 import Payload
 import Request (buildIp, buildPort, generateErrorOutput, generateRequestOutput)
+import Network.Socket
+import Network
+import Control.Arrow
+
 
 data Connection = Connection
   { address :: String,
@@ -15,8 +19,8 @@ data Connection = Connection
 negotiate :: [Word8] -> Either RequestError [Word8]
 negotiate payload = generateNegotiationOutput2 payload
 
-request :: [Word8] -> Either RequestError ([Word8], Connection, RequestMessage)
-request payload = do
+request :: [Word8] -> ([Word8] -> Socket -> IO a) -> IO(Either RequestError a)
+request payload onConnect = do
   let message = parseRequestInput payload
   case message of
     Right m -> do
@@ -24,8 +28,13 @@ request payload = do
       let connection = (\i -> Connection i (buildPort m)) <$> ip
 
       let resulPayload = generateRequestOutput m
-      (\c -> (resulPayload, c, m)) <$> connection
-    Left s -> Left $ NoResponseError s
+      case connection of
+        Right conn -> fmap mapError $ runTCPClient (address conn) (port conn) (onConnect resulPayload)
+        Left err -> pure $ Left err
+
+    Left s -> pure $ Left $ NoResponseError s
+  where
+    mapError e = left (\err -> NoResponseError "nope") e
 
 errorResponse :: RequestMessage -> NetworkError -> [Word8]
 errorResponse message err = case err of

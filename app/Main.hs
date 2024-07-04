@@ -14,44 +14,36 @@ main = do
   loadedConf <- load
   case loadedConf of
     Right conf -> do
-      putStrLn $ "Start listening " ++ (scListen conf) ++ ":" ++ (show $ scPort conf) ++ "..."
+      putStrLn $ "Start listening " ++ scListen conf ++ ":" ++ show (scPort conf) ++ "..."
       runTCPServer (Just $ scListen conf) (show $ scPort conf) talk
     Left (ConfigurationNotAccessible e) -> putStrLn $ "Unable to load configuration " ++ show e
     Left (BadConfiguration e) -> putStrLn $ "Bad configuration " ++ show e
   where
-    afterRequest s r connection message = do
-      print connection
-
-      putStrLn ">>> Forward"
-      clientResp <- runTCPClient (address connection) (port connection) $ \ss -> do
-        sendAll s $ S.pack r
-        _ <- forkIO $ stream s ss
-        stream ss s
-        putStrLn ">>> Completed"
-      case clientResp of
-        Right _ -> putStrLn "Ok"
-        Left er -> do
-          putStrLn "Send error payload"
-          sendAll s $ S.pack $ errorResponse message er
+    onConnect s r ss = do
+      sendAll s $ S.pack r
+      _ <- forkIO $ stream s ss
+      stream ss s
+      putStrLn ">>> Completed"
+      
     afterNego s d = do
       sendAll s $ S.pack d
 
       putStrLn ">>> Request"
       msgRequest <- recv s 1024
       print $ S.unpack msgRequest
-      let req = request $ S.unpack msgRequest
+      req <- request (S.unpack msgRequest) (onConnect s)
       case req of
-        Right (r, connection, message) -> afterRequest s r connection message
+        Right _ -> putStrLn "Ok"
         Left (NoResponseError err) -> putStrLn $ "Error: " ++ err
-        Left (ResponseError response) -> sendAll s $ S.pack $ response
+        Left (ResponseError response) -> sendAll s $ S.pack response
     talk s = do
       putStrLn ">>> Negotiation"
       msgNegociation <- recv s 1024
       print $ S.unpack msgNegociation
 
       let nego = negotiate $ S.unpack msgNegociation
-      case (nego) of
+      case nego of
         Right d -> afterNego s d
         Left (NoResponseError err) -> putStrLn $ "Error: " ++ err
-        Left (ResponseError response) -> sendAll s $ S.pack $ response
+        Left (ResponseError response) -> sendAll s $ S.pack response
 -- from the "network-run" package.
