@@ -34,7 +34,7 @@ request payload onConnect = do
 
     Left s -> pure $ Left $ NoResponseError s
   where
-    mapError e = left (\err -> NoResponseError "nope") e
+    mapError e = left (\_ -> NoResponseError "nope") e
 
 errorResponse :: RequestMessage -> NetworkError -> [Word8]
 errorResponse message err = case err of
