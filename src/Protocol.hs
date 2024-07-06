@@ -25,3 +25,4 @@ findIp message = case requestAddressType message of
   4 -> Right $ intercalate ":" $ map (\x -> showHex x "") $ doubleSize $ requestAddress message
   3 -> Right $ map BS.w2c (requestAddress message)
   _ -> Left 8
+  

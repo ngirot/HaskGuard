@@ -4,7 +4,7 @@ import Data.Word (Word8)
 import Errors
 import Negotiation (generateNegotiationOutput2)
 import Payload
-import Request (buildIp, buildPort, generateErrorOutput, generateRequestOutput)
+import Request (buildIp, buildPort, generateRequestErrorOutput, generateRequestSuccessOutput)
 import Network.Socket
 import Network
 import Control.Arrow
@@ -27,7 +27,7 @@ request payload onConnect = do
       let ip = buildIp m
       let connection = (\i -> Connection i (buildPort m)) <$> ip
 
-      let resulPayload = generateRequestOutput m
+      let resulPayload = generateRequestSuccessOutput m
       case connection of
         Right conn -> fmap mapError $ runTCPClient (address conn) (port conn) (onConnect resulPayload)
         Left err -> pure $ Left err
@@ -38,4 +38,4 @@ request payload onConnect = do
 
 errorResponse :: RequestMessage -> NetworkError -> [Word8]
 errorResponse message err = case err of
-  NameOrServiceNotKnown -> generateErrorOutput message 4
+  NameOrServiceNotKnown -> generateRequestErrorOutput message 4

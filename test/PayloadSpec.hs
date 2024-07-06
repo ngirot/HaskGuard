@@ -1,4 +1,4 @@
-module PayloadSpec(spec) where
+module PayloadSpec (spec) where
 
 import Payload
 import Test.Hspec
@@ -8,6 +8,7 @@ spec = do
   negotiationInput
   negotiationOutput
   requestInput
+  requestOutput
 
 negotiationInput :: Spec
 negotiationInput =
@@ -34,3 +35,8 @@ requestInput =
     it "Should reject payload with invalid port size" $ parseRequestInput [5, 1, 0, 1, 32, 1, 13, 184, 133, 163, 0, 0, 0, 0, 138, 46, 3, 112, 115, 52, 187] `shouldBe` Left "Invalid payload size"
     it "Should accept DomainName" $ parseRequestInput [5, 1, 0, 3, 119, 119, 119, 46, 103, 111, 111, 103, 108, 101, 46, 99, 111, 109, 0, 80] `shouldBe` (Right $ RequestMessage 5 1 3 [119, 119, 119, 46, 103, 111, 111, 103, 108, 101, 46, 99, 111, 109] [0, 80])
     it "Should reject DomainName with no domain name" $ parseRequestInput [5, 1, 0, 3, 0, 80] `shouldBe` Left "Invalid payload size"
+
+requestOutput :: Spec
+requestOutput =
+  describe "Request output" $ do
+    it "Should create output" $ (generateRequestOutput (RequestMessage 5 1 3 [4, 5, 6] [7, 8]) 12) `shouldBe` [5, 12, 0, 3, 4, 5, 6, 7, 8]
