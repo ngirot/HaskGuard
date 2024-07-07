@@ -1,4 +1,4 @@
-module Request (generateRequestOutput2, buildPort, buildIp, parseRequestInput, generateRequestSuccessOutput, generateRequestErrorOutput, RequestMessage (..)) where
+module Request (manageRequest) where
 
 import Control.Arrow
 import Data.Word (Word8)
@@ -8,8 +8,8 @@ import Network.Socket
 import Payload
 import Protocol
 
-generateRequestOutput2 :: [Word8] -> ([Word8] -> Socket -> IO a) -> IO (Either RequestError a)
-generateRequestOutput2 payload onConnect = do
+manageRequest :: [Word8] -> ([Word8] -> Socket -> IO a) -> IO (Either RequestError a)
+manageRequest payload onConnect = do
   let parsedPayload = parseRequestInput payload
   case parsedPayload of
     Right message -> do

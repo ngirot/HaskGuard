@@ -3,11 +3,9 @@ module Lib (serve) where
 import Config
 import Control.Concurrent (forkIO)
 import qualified Data.ByteString as S
-import Data.Word (Word8)
 import Errors
-import Negotiation (generateNegotiationOutput2)
+import Negotiation (manageNegotiation)
 import Network
-import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
 import Request
 import Streaming (stream)
@@ -29,7 +27,7 @@ serve configuration = do
       putStrLn ">>> Request"
       msgRequest <- recv s 1024
       print $ S.unpack msgRequest
-      req <- request (S.unpack msgRequest) (onConnect s)
+      req <- manageRequest (S.unpack msgRequest) (onConnect s)
       case req of
         Right _ -> putStrLn "Ok"
         Left (NoResponseError err) -> putStrLn $ "Error: " ++ err
@@ -39,16 +37,8 @@ serve configuration = do
       msgNegociation <- recv s 1024
       print $ S.unpack msgNegociation
 
-      let nego = negotiate $ S.unpack msgNegociation
+      let nego = manageNegotiation $ S.unpack msgNegociation
       case nego of
         Right d -> afterNego s d
         Left (NoResponseError err) -> putStrLn $ "Error: " ++ err
         Left (ResponseError response) -> sendAll s $ S.pack response
-
--- from the "network-run" package.
-
-negotiate :: [Word8] -> Either RequestError [Word8]
-negotiate payload = generateNegotiationOutput2 payload
-
-request :: [Word8] -> ([Word8] -> Socket -> IO a) -> IO (Either RequestError a)
-request payload onConnect = generateRequestOutput2 payload onConnect
