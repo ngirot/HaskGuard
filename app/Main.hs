@@ -4,10 +4,11 @@ import Config
 import Control.Concurrent (forkIO)
 import qualified Data.ByteString as S
 import Loader
-import Lib (negotiate, request, RequestError (..))
+import Lib (negotiate, request)
 import Network
 import Network.Socket.ByteString (recv, sendAll)
 import Streaming (stream)
+import Errors
 
 main :: IO ()
 main = do
