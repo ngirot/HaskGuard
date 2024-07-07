@@ -4,3 +4,6 @@ out
 *.cabal
 *.iml
 *~
+
+config.ini
+config.ini.*
