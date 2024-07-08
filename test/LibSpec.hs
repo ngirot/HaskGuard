@@ -38,7 +38,7 @@ launchTest port communications = do
 
       case r of
         Right v -> pure v
-        Left _ -> expectationFailure "Server not started"
+        Left _ -> expectationFailure "Client not started"
     else [serverStarted, fakeTargetStarted] `shouldBe` [True, True]
   where
     reduceCommunication socket com = do
