@@ -8,6 +8,7 @@ import Data.Word (Word8)
 import Lib
 import Network
 import Network.Socket.ByteString (recv, sendAll)
+import Network.Socket.Free
 import Test.Hspec
 
 data Communication = Communication
@@ -22,13 +23,14 @@ spec = do
 
 launchTest :: [Communication] -> Expectation
 launchTest communications = do
-  let configuration = ServerConfiguration "localhost" 3232
+  serverPort <- getFreePort
+  let configuration = ServerConfiguration "localhost" serverPort
   signal <- newEmptyMVar
   _ <- forkIO $ serve configuration (putMVar signal True)
   started <- takeMVar signal
   if started
     then do
-      r <- runTCPClient "localhost" "3232" $ \socket -> do
+      r <- runTCPClient "localhost" (show serverPort) $ \socket -> do
         forM_ communications (reduceCommunication socket)
 
       case r of

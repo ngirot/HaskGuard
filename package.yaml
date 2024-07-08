@@ -60,5 +60,6 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - hspec >=2.11.9
+    - hspec >= 2.11.9
+    - port-utils == 0.2.1.0
     - HaskGuard
