@@ -1,19 +1,27 @@
-module LibSpec(spec) where
+module LibSpec (spec) where
 
 import Config
 import Control.Concurrent
+import Control.Monad
 import qualified Data.ByteString as S
+import Data.Word (Word8)
 import Lib
 import Network
 import Network.Socket.ByteString (recv, sendAll)
 import Test.Hspec
 
+data Communication = Communication
+  { comSend :: [Word8],
+    comReceived :: [Word8]
+  }
+  deriving (Show, Eq)
+
 spec :: Spec
 spec = do
   connect
 
-launchTest :: Expectation
-launchTest = do
+launchTest :: [Communication] -> Expectation
+launchTest communications = do
   let configuration = ServerConfiguration "localhost" 3232
   signal <- newEmptyMVar
   _ <- forkIO $ serve configuration (putMVar signal True)
@@ -21,21 +29,19 @@ launchTest = do
   if started
     then do
       r <- runTCPClient "localhost" "3232" $ \socket -> do
-        sendAll socket $ S.pack [5, 1, 0]
-        aaa <- S.unpack <$> recv socket 4096
-        if aaa /= [5, 0]
-          then return $ aaa `shouldBe` [5, 0]
-          else do
-            sendAll socket $ S.pack [5, 1, 0, 1, 216, 58, 215, 36, 0, 80]
-            bbb <- S.unpack <$> recv socket 4096
-            pure $ bbb `shouldBe` [5, 0, 0, 1, 216, 58, 215, 36, 0, 80]
+        forM_ communications (reduceCommunication socket)
+
       case r of
-        Right x -> x
-        Left _ -> False `shouldBe` True
-    else
-      started `shouldBe` True
+        Right v -> pure v
+        Left _ -> expectationFailure "Server not started"
+    else started `shouldBe` True
+  where
+    reduceCommunication socket com = do
+      sendAll socket $ S.pack (comSend com)
+      received <- S.unpack <$> recv socket 4096
+      received `shouldBe` comReceived com
 
 connect :: Spec
 connect =
   describe "Simple connect request" $ do
-    it "Should send request" $ launchTest
+    it "Should send request" $ launchTest [Communication [5, 1, 0] [5, 0], Communication [5, 1, 0, 1, 216, 58, 215, 36, 0, 80] [5, 0, 0, 1, 216, 58, 215, 36, 0, 80]]
