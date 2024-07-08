@@ -24,7 +24,7 @@ spec = do
 launchTest :: Int -> [Communication] -> Expectation
 launchTest port communications = do
   serverPort <- getFreePort
-  let configuration = ServerConfiguration "localhost" serverPort
+  let configuration = ServerConfiguration "127.0.0.1" serverPort
   signal <- newEmptyMVar
   signal2 <- newEmptyMVar
   _ <- forkIO $ runTCPServer (Just "127.0.0.1") (show port) (putMVar signal2 True) mult2Server
@@ -33,7 +33,7 @@ launchTest port communications = do
   serverStarted <- takeMVar signal
   if serverStarted && fakeTargetStarted
     then do
-      r <- runTCPClient "localhost" (show serverPort) $ \socket -> do
+      r <- runTCPClient "127.0.0.1" (show serverPort) $ \socket -> do
         forM_ communications (reduceCommunication socket)
 
       case r of
