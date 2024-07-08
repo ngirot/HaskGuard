@@ -61,6 +61,13 @@ connect =
           Communication ([5, 1, 0, 1, 127, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 1, 127, 0, 0, 1] ++ portInBinary), -- CONNECT on 127.0.0.1
           Communication [1] [2] -- payload
         ]
+    it "Should reject all authenticating methods with a NO ACCEPTABLE METHODS payload" $ do
+      port <- freePort
+      launchTest port [Communication [5, 2, 1, 2] [5, 255]]
+    it "Should reject sock4 payloads by closing connection" $ do
+      port <- freePort
+      let portInBinary = toWord8 port
+      launchTest port [Communication ([4, 1] ++ portInBinary ++ [127, 0, 0, 1, 0]) []]
   where
     freePort = getFreePort
     toWord8 i = do
