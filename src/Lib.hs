@@ -1,7 +1,7 @@
 module Lib (serve) where
 
 import Config
-import Control.Concurrent (forkIO)
+import Control.Concurrent
 import qualified Data.ByteString as S
 import Errors
 import Negotiation (manageNegotiation)
@@ -10,10 +10,9 @@ import Network.Socket.ByteString (recv, sendAll)
 import Request
 import Streaming (stream)
 
-serve :: ServerConfiguration -> IO ()
-serve configuration = do
-  putStrLn $ "Start listening " ++ scListen configuration ++ ":" ++ show (scPort configuration) ++ "..."
-  runTCPServer (Just $ scListen configuration) (show $ scPort configuration) talk
+serve :: ServerConfiguration -> IO() -> IO ()
+serve configuration onStartup = do
+  runTCPServer (Just $ scListen configuration) (show $ scPort configuration) onStartup talk
   where
     onConnect s r ss = do
       sendAll s $ S.pack r

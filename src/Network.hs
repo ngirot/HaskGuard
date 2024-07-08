@@ -8,8 +8,8 @@ import Control.Monad (forever, void, mfilter)
 import Errors
 import Network.Socket
 
-runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
-runTCPServer mhost port server = withSocketsDo $ do
+runTCPServer :: Maybe HostName -> ServiceName -> IO() -> (Socket -> IO a) -> IO a
+runTCPServer mhost port onConnect server = withSocketsDo $ do
   addr <- resolve
   E.bracket (open addr) close loop
   where
@@ -25,6 +25,7 @@ runTCPServer mhost port server = withSocketsDo $ do
       withFdSocket sock setCloseOnExecIfNeeded
       bind sock $ addrAddress addr
       listen sock 1024
+      onConnect
       return sock
     loop sock = forever $
       E.bracketOnError (accept sock) (close . fst) $
