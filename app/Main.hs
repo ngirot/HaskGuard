@@ -8,7 +8,7 @@ main :: IO ()
 main = do
   loadedConf <- load
   case loadedConf of
-    Right conf -> serve conf (onStartup conf)
+    Right conf -> serve conf putStrLn (onStartup conf)
     Left (ConfigurationNotAccessible e) -> putStrLn $ "Unable to load configuration " ++ show e
     Left (BadConfiguration e) -> putStrLn $ "Bad configuration " ++ show e
   where

@@ -10,34 +10,34 @@ import Network.Socket.ByteString (recv, sendAll)
 import Request
 import Streaming (stream)
 
-serve :: ServerConfiguration -> IO() -> IO ()
-serve configuration onStartup = do
+serve :: ServerConfiguration -> (String -> IO()) -> IO() -> IO ()
+serve configuration logger onStartup = do
   runTCPServer (Just $ scListen configuration) (show $ scPort configuration) onStartup talk
   where
     onConnect s r ss = do
       sendAll s $ S.pack r
       _ <- forkIO $ stream s ss
       stream ss s
-      putStrLn ">>> Completed"
+      logger ">>> Completed"
 
     afterNego s d = do
       sendAll s $ S.pack d
 
-      putStrLn ">>> Request"
+      logger ">>> Request"
       msgRequest <- recv s 1024
-      print $ S.unpack msgRequest
+      logger $ show $ S.unpack msgRequest
       req <- manageRequest (S.unpack msgRequest) (onConnect s)
       case req of
-        Right _ -> putStrLn "Ok"
-        Left (NoResponseError err) -> putStrLn $ "Error: " ++ err
+        Right _ -> logger "Ok"
+        Left (NoResponseError err) -> logger $ "Error: " ++ err
         Left (ResponseError response) -> sendAll s $ S.pack response
     talk s = do
-      putStrLn ">>> Negotiation"
+      logger ">>> Negotiation"
       msgNegociation <- recv s 1024
-      print $ S.unpack msgNegociation
+      logger $ show $ S.unpack msgNegociation
 
       let nego = manageNegotiation $ S.unpack msgNegociation
       case nego of
         Right d -> afterNego s d
-        Left (NoResponseError err) -> putStrLn $ "Error: " ++ err
+        Left (NoResponseError err) -> logger $ "Error: " ++ err
         Left (ResponseError response) -> sendAll s $ S.pack response

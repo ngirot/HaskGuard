@@ -26,7 +26,7 @@ launchTest communications = do
   serverPort <- getFreePort
   let configuration = ServerConfiguration "localhost" serverPort
   signal <- newEmptyMVar
-  _ <- forkIO $ serve configuration (putMVar signal True)
+  _ <- forkIO $ serve configuration (\_ -> return ()) (putMVar signal True)
   started <- takeMVar signal
   if started
     then do
