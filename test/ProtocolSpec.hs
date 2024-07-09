@@ -8,6 +8,7 @@ spec :: Spec
 spec = do
   findNegotiationReturnCodeSpec
   findPortSpec
+  findCommandSpec
   findIpSpec
 
 findNegotiationReturnCodeSpec :: Spec
@@ -22,6 +23,14 @@ findPortSpec =
   describe "findPort" $ do
     it "Should find port on single byte" $ findPort (RequestMessage 1 1 1 [] [0, 80]) `shouldBe` "80"
     it "Should find port on all bytes" $ findPort (RequestMessage 1 1 1 [] [1, 187]) `shouldBe` "443"
+
+findCommandSpec :: Spec
+findCommandSpec =
+  describe "findCommand" $ do
+    it "Should find CONNECT command" $ findCommand (RequestMessage 1 1 1 [] []) `shouldBe` Right Connect
+    it "Should send error code 7 on BIND command" $ findCommand (RequestMessage 1 2 1 [] []) `shouldBe` Left 7
+    it "Should send error code 7 on UDP ASSOCIATE command" $ findCommand (RequestMessage 1 3 1 [] []) `shouldBe` Left 7
+    it "Should send error code 7 on invalid command number" $ findCommand (RequestMessage 1 9 1 [] []) `shouldBe` Left 7
 
 findIpSpec :: Spec
 findIpSpec =

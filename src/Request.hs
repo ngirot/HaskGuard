@@ -15,15 +15,14 @@ manageRequest payload onConnect = do
     Right message -> do
       let buildHost = buildIp message
       let port = buildPort message
+      let command = buildCommand message
 
       case buildHost of
-        Right host -> do
-          let resulPayload = generateRequestSuccessOutput message
-          left (mapError message) <$> runTCPClient host port (onConnect resulPayload)
+        Right host -> case command of
+          Right Connect -> connectCommand message host port onConnect
+          Left er -> pure $ Left $ er
         Left err -> pure $ Left err
     Left err -> pure $ Left $ NoResponseError err
-  where
-    mapError message _ = ResponseError $ generateRequestErrorOutput message 4
 
 buildPort :: RequestMessage -> String
 buildPort = findPort
@@ -32,6 +31,18 @@ buildIp :: RequestMessage -> Either RequestError String
 buildIp message = left mapError $ findIp message
   where
     mapError code = ResponseError $ generateRequestOutput message code
+
+buildCommand :: RequestMessage -> Either RequestError Command
+buildCommand message = left mapError $ findCommand message
+  where
+    mapError code = ResponseError $ generateRequestOutput message code
+
+connectCommand :: RequestMessage -> String -> String -> ([Word8] -> Socket -> IO a) -> IO (Either RequestError a)
+connectCommand message host port onConnect = do
+  let resulPayload = generateRequestSuccessOutput message
+  left (mapError message) <$> runTCPClient host port (onConnect resulPayload)
+  where
+    mapError m _ = ResponseError $ generateRequestErrorOutput m 4
 
 generateRequestSuccessOutput :: RequestMessage -> [Word8]
 generateRequestSuccessOutput message = generateRequestOutput message 0
