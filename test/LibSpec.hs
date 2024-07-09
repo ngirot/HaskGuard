@@ -52,26 +52,31 @@ launchTest port communications = do
 connect :: Spec
 connect =
   describe "Simple connect request" $ do
-    it "Should send CONNECT request and send payload with response" $ do
+    it "Should transfer data from target on 'ipv4' CONNECT" $ do
       port <- freePort
       let portInBinary = toWord8 port
       launchTest
         port
-        [ Communication [5, 1, 0] [5, 0], -- Negotiation
-          Communication ([5, 1, 0, 1, 127, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 1, 127, 0, 0, 1] ++ portInBinary), -- CONNECT on 127.0.0.1
-          Communication [1] [2] -- payload
+        [ Communication [5, 1, 0] [5, 0],
+          Communication ([5, 1, 0, 1, 127, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 1, 127, 0, 0, 1] ++ portInBinary),
+          Communication [1] [2]
         ]
-    it "Should send CONNECT request and send payload with response using domain name" $ do
+    it "Should transfer data from target on 'domain name' CONNECT" $ do
       port <- freePort
       let portInBinary = toWord8 port
       launchTest
         port
-        [ Communication [5, 1, 0] [5, 0], -- Negotiation
-        -- Communication ([5, 1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 187]) ([5, 0, 0, 1, 127, 0, 0, 1] ++ portInBinary), -- CONNECT on 127.0.0.1
-          Communication ([5, 1, 0, 3, 108, 111, 99, 97, 108, 104, 111, 115, 116] ++ portInBinary) ([5, 0, 0, 3, 108, 111, 99, 97, 108, 104, 111, 115, 116] ++ portInBinary), -- CONNECT on 127.0.0.1
+        [ Communication [5, 1, 0] [5, 0],
+          Communication ([5, 1, 0, 3, 108, 111, 99, 97, 108, 104, 111, 115, 116] ++ portInBinary) ([5, 0, 0, 3, 108, 111, 99, 97, 108, 104, 111, 115, 116] ++ portInBinary),
           Communication [1] [2] -- payload
         ]
-
+    it "Should send '4' as error code when 'domain name' doest not exists for CONNECT" $ do
+      port <- freePort
+      launchTest
+        port
+        [ Communication [5, 1, 0] [5, 0],
+          Communication ([5, 1, 0, 3, 104, 111, 115, 116, 46, 102, 97, 107, 101, 0, 80]) ([5, 4, 0, 3, 104, 111, 115, 116, 46, 102, 97, 107, 101, 0, 80])
+        ]
     it "Should reject all authenticating methods with a NO ACCEPTABLE METHODS payload" $ do
       port <- freePort
       launchTest port [Communication [5, 2, 1, 2] [5, 255]]
