@@ -24,10 +24,10 @@ spec = do
 launchTest :: Int -> [Communication] -> Expectation
 launchTest port communications = do
   serverPort <- getFreePort
-  let configuration = ServerConfiguration "127.0.0.1" serverPort
+  let configuration = ServerConfiguration "0.0.0.0" serverPort
   signal <- newEmptyMVar
   signal2 <- newEmptyMVar
-  _ <- forkIO $ runTCPServer (Just "127.0.0.1") (show port) (putMVar signal2 True) mult2Server
+  _ <- forkIO $ runTCPServer Nothing (show port) (putMVar signal2 True) mult2Server
   _ <- forkIO $ serve configuration (\_ -> return ()) (putMVar signal True)
   fakeTargetStarted <- takeMVar signal2
   serverStarted <- takeMVar signal
@@ -61,6 +61,17 @@ connect =
           Communication ([5, 1, 0, 1, 127, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 1, 127, 0, 0, 1] ++ portInBinary), -- CONNECT on 127.0.0.1
           Communication [1] [2] -- payload
         ]
+    it "Should send CONNECT request and send payload with response using domain name" $ do
+      port <- freePort
+      let portInBinary = toWord8 port
+      launchTest
+        port
+        [ Communication [5, 1, 0] [5, 0], -- Negotiation
+        -- Communication ([5, 1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 187]) ([5, 0, 0, 1, 127, 0, 0, 1] ++ portInBinary), -- CONNECT on 127.0.0.1
+          Communication ([5, 1, 0, 3, 108, 111, 99, 97, 108, 104, 111, 115, 116] ++ portInBinary) ([5, 0, 0, 3, 108, 111, 99, 97, 108, 104, 111, 115, 116] ++ portInBinary), -- CONNECT on 127.0.0.1
+          Communication [1] [2] -- payload
+        ]
+
     it "Should reject all authenticating methods with a NO ACCEPTABLE METHODS payload" $ do
       port <- freePort
       launchTest port [Communication [5, 2, 1, 2] [5, 255]]

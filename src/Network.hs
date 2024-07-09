@@ -4,11 +4,11 @@ module Network (runTCPServer, runTCPClient) where
 
 import Control.Concurrent (forkFinally)
 import qualified Control.Exception as E
-import Control.Monad (forever, void, mfilter)
+import Control.Monad (forever, mfilter, void)
 import Errors
 import Network.Socket
 
-runTCPServer :: Maybe HostName -> ServiceName -> IO() -> (Socket -> IO a) -> IO a
+runTCPServer :: Maybe HostName -> ServiceName -> IO () -> (Socket -> IO a) -> IO a
 runTCPServer mhost port onConnect server = withSocketsDo $ do
   addr <- resolve
   E.bracket (open addr) close loop
@@ -19,7 +19,7 @@ runTCPServer mhost port onConnect server = withSocketsDo $ do
               { addrFlags = [AI_PASSIVE],
                 addrSocketType = Stream
               }
-      head <$> getAddrInfo (Just hints) realHost (Just port)
+      head <$> filter filterIpV4 <$> getAddrInfo (Just hints) realHost (Just port)
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
       setSocketOption sock ReuseAddr 1
       withFdSocket sock setCloseOnExecIfNeeded
@@ -48,10 +48,13 @@ runTCPClient host port client = withSocketsDo $ do
     ooo a = E.bracket (open a) close client
     resolve = do
       let hints = defaultHints {addrSocketType = Stream}
-      e <- E.try @E.IOException $ getAddrInfo (Just hints) (Just host) (Just port)
+      e <- E.try @E.IOException $ filter filterIpV4 <$> getAddrInfo (Just hints) (Just host) (Just port)
       case e of
         Right b -> pure $ Right $ head b
         Left _ -> pure $ Left NameOrServiceNotKnown
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
       connect sock $ addrAddress addr
       return sock
+
+filterIpV4 :: AddrInfo -> Bool
+filterIpV4 addr = (addrFamily addr) == AF_INET
