@@ -77,6 +77,13 @@ connect =
         [ Communication [5, 1, 0] [5, 0],
           Communication ([5, 1, 0, 3, 104, 111, 115, 116, 46, 102, 97, 107, 101, 0, 80]) ([5, 4, 0, 3, 104, 111, 115, 116, 46, 102, 97, 107, 101, 0, 80])
         ]
+    it "Should send '8' as error code when address type is not supported for CONNECT" $ do
+      port <- freePort
+      launchTest
+        port
+        [ Communication [5, 1, 0] [5, 0],
+          Communication ([5, 1, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 80]) ([5, 8, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 80])
+        ]
     it "Should reject all authenticating methods with a NO ACCEPTABLE METHODS payload" $ do
       port <- freePort
       launchTest port [Communication [5, 2, 1, 2] [5, 255]]
