@@ -14,9 +14,12 @@ spec = do
 findNegotiationReturnCodeSpec :: Spec
 findNegotiationReturnCodeSpec =
   describe "findNegotiationReturnCode" $ do
-    it "Should have no authentication protocol if available" $ findNegotiationReturnCode (NegotiationMessage 4 [0, 1, 2, 3]) `shouldBe` Right 0
-    it "Should error code 255 when no authentication is not available" $ findNegotiationReturnCode (NegotiationMessage 4 [1, 2, 3]) `shouldBe` Left 255
-    it "Should error code 255 when no methods are avaialbles" $ findNegotiationReturnCode (NegotiationMessage 4 []) `shouldBe` Left 255
+    it "Should choose 'NO AUTHENTICATION REQUIRED' if available" $ findNegotiationReturnCode (NegotiationMessage 4 [0, 1, 2, 3]) `shouldBe` Right 0
+    it "GSSAPI is not supported" $ findNegotiationReturnCode (NegotiationMessage 4 [1]) `shouldBe` Left 255
+    it "USERNAME/PASSWORD is not supported" $ findNegotiationReturnCode (NegotiationMessage 4 [2]) `shouldBe` Left 255
+    it "IANA ASSIGNED are not supported" $ findNegotiationReturnCode (NegotiationMessage 4 [3 .. 127]) `shouldBe` Left 255
+    it "All RESERVED FOR PRIVATE METHODS are not supported" $ findNegotiationReturnCode (NegotiationMessage 4 [128 .. 255]) `shouldBe` Left 255
+    it "Should select error code 255 when no authentication methods are provided" $ findNegotiationReturnCode (NegotiationMessage 4 []) `shouldBe` Left 255
 
 findPortSpec :: Spec
 findPortSpec =
