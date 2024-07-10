@@ -2,6 +2,7 @@
 
 module Network (runTCPServer, runTCPClient) where
 
+import qualified Control.Arrow as A
 import Control.Concurrent (forkFinally)
 import qualified Control.Exception as E
 import Control.Monad (forever, mfilter, void)
@@ -42,10 +43,11 @@ runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO (Either Networ
 runTCPClient host port client = withSocketsDo $ do
   addr <- resolve
   case addr of
-    Right r -> Right <$> ooo r
+    Right r -> A.left mapCon <$> launchConnect r
     Left x -> pure $ Left x
   where
-    ooo a = E.bracket (open a) close client
+    mapCon _ = ConnectionRefused
+    launchConnect a = E.try @E.IOException $ E.bracket (open a) close client
     resolve = do
       let hints = defaultHints {addrSocketType = Stream}
       e <- E.try @E.IOException $ filter filterIpV4 <$> getAddrInfo (Just hints) (Just host) (Just port)

@@ -33,7 +33,7 @@ launchTest port communications = do
   serverStarted <- takeMVar signal
   if serverStarted && fakeTargetStarted
     then do
-      r <- runTCPClient "127.0.0.1" (show serverPort) $ \socket -> do
+      r <- runTCPClient "localhost" (show serverPort) $ \socket -> do
         forM_ communications (reduceCommunication socket)
 
       case r of
@@ -61,6 +61,15 @@ connect =
           Communication ([5, 1, 0, 1, 127, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 1, 127, 0, 0, 1] ++ portInBinary),
           Communication [1] [2]
         ]
+    -- it "Should transfer data from target on 'ipv6' CONNECT" $ do
+    --   port <- freePort
+    --   let portInBinary = toWord8 port
+    --   launchTest
+    --     port
+    --     [ Communication [5, 1, 0] [5, 0],
+    --       Communication ([5, 1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] ++ portInBinary),
+    --       Communication [1] [2]
+    --     ]
     it "Should transfer data from target on 'domain name' CONNECT" $ do
       port <- freePort
       let portInBinary = toWord8 port
@@ -77,12 +86,14 @@ connect =
         [ Communication [5, 1, 0] [5, 0],
           Communication [5, 1, 0, 3, 104, 111, 115, 116, 46, 102, 97, 107, 101, 0, 80] [5, 4, 0, 3, 104, 111, 115, 116, 46, 102, 97, 107, 101, 0, 80]
         ]
-    it "Should send '8' as error code when address type is not supported for CONNECT" $ do
+    it "Should send '5' as error code on a connection refused during CONNECT" $ do
       port <- freePort
+      portThatWillRefuseConnection <- freePort
+      let portInBinary = toWord8 portThatWillRefuseConnection
       launchTest
         port
         [ Communication [5, 1, 0] [5, 0],
-          Communication [5, 1, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 80] [5, 8, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 80]
+          Communication ([5, 1, 0, 1, 127, 0, 0, 1] ++ portInBinary) ([5, 5, 0, 1, 127, 0, 0, 1] ++ portInBinary)
         ]
     it "Should send '7' as error code when command" $ do
       port <- freePort
@@ -90,6 +101,13 @@ connect =
         port
         [ Communication [5, 1, 0] [5, 0],
           Communication [5, 4, 0, 1, 127, 0, 0, 1, 0, 80] [5, 7, 0, 1, 127, 0, 0, 1, 0, 80]
+        ]
+    it "Should send '8' as error code when address type is not supported for CONNECT" $ do
+      port <- freePort
+      launchTest
+        port
+        [ Communication [5, 1, 0] [5, 0],
+          Communication [5, 1, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 80] [5, 8, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 80]
         ]
     it "Should reject all authenticating methods with a NO ACCEPTABLE METHODS payload" $ do
       port <- freePort
