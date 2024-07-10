@@ -10,6 +10,7 @@ import Network
 import Network.Socket.ByteString (recv, sendAll)
 import Request
 import Streaming (stream)
+import Data.Maybe
 
 serve :: ServerConfiguration -> (String -> IO ()) -> ([String] -> IO ()) -> IO ()
 serve configuration logger onStartup = do
@@ -20,7 +21,7 @@ serve configuration logger onStartup = do
   threadV6 <- async $ runTCPServer IpV6 (Just $ scListen configuration) (show $ scPort configuration) (onStartupMerger startedV6) talk
 
   hostsStarted <- mapM takeMVar [startedV4, startedV6]
-  onStartup hostsStarted
+  onStartup $ catMaybes hostsStarted
 
   mapM_ wait [threadV4, threadV6]
   where

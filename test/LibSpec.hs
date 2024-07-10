@@ -10,6 +10,7 @@ import Network
 import Network.Socket.ByteString (recv, sendAll)
 import Network.Socket.Free
 import Test.Hspec
+import Control.Concurrent.Async
 
 data Communication = Communication
   { comSend :: [Word8],
@@ -28,9 +29,9 @@ launchTest port communications = do
   signal <- newEmptyMVar
   signal2 <- newEmptyMVar
   signal3 <- newEmptyMVar
-  _ <- forkIO $ runTCPServer IpV6 (Just "::1") (show port) (\_ -> putMVar signal2 True) mult2Server
-  _ <- forkIO $ runTCPServer IpV4 (Just "127.0.0.1") (show port) (\_ -> putMVar signal3 True) mult2Server
-  _ <- forkIO $ serve configuration (\_ -> return ()) (\_ -> putMVar signal True)
+  _ <- async $ runTCPServer IpV6 (Just "::1") (show port) (\_ -> putMVar signal2 True) mult2Server
+  _ <- async $ runTCPServer IpV4 (Just "127.0.0.1") (show port) (\_ -> putMVar signal3 True) mult2Server
+  _ <- async $ serve configuration (\_ -> return ()) (\_ -> putMVar signal True)
   fakeTargetStarted2 <- takeMVar signal2
   fakeTargetStarted3 <- takeMVar signal3
   serverStarted <- takeMVar signal

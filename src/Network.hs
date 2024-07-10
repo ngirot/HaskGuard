@@ -11,10 +11,14 @@ import Network.Socket
 
 data IpType = IpV6 | IpV4
 
-runTCPServer :: IpType -> Maybe HostName -> ServiceName -> (String -> IO ()) -> (Socket -> IO a) -> IO a
+runTCPServer :: IpType -> Maybe HostName -> ServiceName -> (Maybe String -> IO ()) -> (Socket -> IO a) -> IO (Either String a)
 runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
   addr <- resolve
-  E.bracket (open addr) close loop
+  if length addr >= 1
+    then E.bracket (open $ head addr) close loop
+    else do
+      onConnect Nothing
+      return $ Left "Unable to launche server"
   where
     resolve = do
       let hints =
@@ -22,13 +26,13 @@ runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
               { addrFlags = [AI_PASSIVE],
                 addrSocketType = Stream
               }
-      head <$> filter (filterIpByVersion ipType) <$> getAddrInfo (Just hints) realHost (Just port)
+      filter (filterIpByVersion ipType) <$> getAddrInfo (Just hints) realHost (Just port)
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
       setSocketOption sock ReuseAddr 1
       withFdSocket sock setCloseOnExecIfNeeded
       bind sock $ addrAddress addr
       listen sock 1024
-      onConnect $ formatConnection addr
+      onConnect $ Just $ formatConnection addr
       return sock
     loop sock = forever $
       E.bracketOnError (accept sock) (close . fst) $
