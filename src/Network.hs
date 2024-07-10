@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeApplications #-}
 
-module Network (runTCPServer, runTCPClient) where
+module Network (runTCPServer, runTCPClient, IpType (..)) where
 
 import qualified Control.Arrow as A
 import Control.Concurrent (forkFinally)
@@ -9,8 +9,10 @@ import Control.Monad (forever, mfilter, void)
 import Errors
 import Network.Socket
 
-runTCPServer :: Maybe HostName -> ServiceName -> IO () -> (Socket -> IO a) -> IO a
-runTCPServer mhost port onConnect server = withSocketsDo $ do
+data IpType = IpV6 | IpV4
+
+runTCPServer :: IpType -> Maybe HostName -> ServiceName -> (String -> IO ()) -> (Socket -> IO a) -> IO a
+runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
   addr <- resolve
   E.bracket (open addr) close loop
   where
@@ -20,13 +22,13 @@ runTCPServer mhost port onConnect server = withSocketsDo $ do
               { addrFlags = [AI_PASSIVE],
                 addrSocketType = Stream
               }
-      head <$> filter filterIpV4 <$> getAddrInfo (Just hints) realHost (Just port)
+      head <$> filter (filterIpByVersion ipType) <$> getAddrInfo (Just hints) realHost (Just port)
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
       setSocketOption sock ReuseAddr 1
       withFdSocket sock setCloseOnExecIfNeeded
       bind sock $ addrAddress addr
       listen sock 1024
-      onConnect
+      onConnect $ formatConnection addr
       return sock
     loop sock = forever $
       E.bracketOnError (accept sock) (close . fst) $
@@ -50,7 +52,7 @@ runTCPClient host port client = withSocketsDo $ do
     launchConnect a = E.try @E.IOException $ E.bracket (open a) close client
     resolve = do
       let hints = defaultHints {addrSocketType = Stream}
-      e <- E.try @E.IOException $ filter filterIpV4 <$> getAddrInfo (Just hints) (Just host) (Just port)
+      e <- E.try @E.IOException $ getAddrInfo (Just hints) (Just host) (Just port)
       case e of
         Right b -> pure $ Right $ head b
         Left _ -> pure $ Left NameOrServiceNotKnown
@@ -58,5 +60,10 @@ runTCPClient host port client = withSocketsDo $ do
       connect sock $ addrAddress addr
       return sock
 
-filterIpV4 :: AddrInfo -> Bool
-filterIpV4 addr = (addrFamily addr) == AF_INET
+filterIpByVersion :: IpType -> AddrInfo -> Bool
+filterIpByVersion ipType addr = case ipType of
+  IpV4 -> (addrFamily addr) == AF_INET
+  IpV6 -> (addrFamily addr) == AF_INET6
+
+formatConnection :: AddrInfo -> String
+formatConnection addr = show $ addrAddress addr

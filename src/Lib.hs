@@ -2,6 +2,7 @@ module Lib (serve) where
 
 import Config
 import Control.Concurrent
+import Control.Concurrent.Async
 import qualified Data.ByteString as S
 import Errors
 import Negotiation (manageNegotiation)
@@ -10,10 +11,21 @@ import Network.Socket.ByteString (recv, sendAll)
 import Request
 import Streaming (stream)
 
-serve :: ServerConfiguration -> (String -> IO()) -> IO() -> IO ()
+serve :: ServerConfiguration -> (String -> IO ()) -> ([String] -> IO ()) -> IO ()
 serve configuration logger onStartup = do
-  runTCPServer (Just $ scListen configuration) (show $ scPort configuration) onStartup talk
+  startedV4 <- newEmptyMVar
+  startedV6 <- newEmptyMVar
+
+  threadV4 <- async $ runTCPServer IpV4 (Just $ scListen configuration) (show $ scPort configuration) (onStartupMerger startedV4) talk
+  threadV6 <- async $ runTCPServer IpV6 (Just $ scListen configuration) (show $ scPort configuration) (onStartupMerger startedV6) talk
+
+  hostsStarted <- mapM takeMVar [startedV4, startedV6]
+  onStartup hostsStarted
+
+  mapM_ wait [threadV4, threadV6]
   where
+    onStartupMerger mVar host = do
+      putMVar mVar host
     onConnect s r ss = do
       sendAll s $ S.pack r
       _ <- forkIO $ stream s ss

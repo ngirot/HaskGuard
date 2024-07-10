@@ -24,14 +24,17 @@ spec = do
 launchTest :: Int -> [Communication] -> Expectation
 launchTest port communications = do
   serverPort <- getFreePort
-  let configuration = ServerConfiguration "0.0.0.0" serverPort
+  let configuration = ServerConfiguration "localhost" serverPort
   signal <- newEmptyMVar
   signal2 <- newEmptyMVar
-  _ <- forkIO $ runTCPServer Nothing (show port) (putMVar signal2 True) mult2Server
-  _ <- forkIO $ serve configuration (\_ -> return ()) (putMVar signal True)
-  fakeTargetStarted <- takeMVar signal2
+  signal3 <- newEmptyMVar
+  _ <- forkIO $ runTCPServer IpV6 (Just "::1") (show port) (\_ -> putMVar signal2 True) mult2Server
+  _ <- forkIO $ runTCPServer IpV4 (Just "127.0.0.1") (show port) (\_ -> putMVar signal3 True) mult2Server
+  _ <- forkIO $ serve configuration (\_ -> return ()) (\_ -> putMVar signal True)
+  fakeTargetStarted2 <- takeMVar signal2
+  fakeTargetStarted3 <- takeMVar signal3
   serverStarted <- takeMVar signal
-  if serverStarted && fakeTargetStarted
+  if serverStarted && fakeTargetStarted2 && fakeTargetStarted3
     then do
       r <- runTCPClient "localhost" (show serverPort) $ \socket -> do
         forM_ communications (reduceCommunication socket)
@@ -39,7 +42,7 @@ launchTest port communications = do
       case r of
         Right v -> pure v
         Left _ -> expectationFailure "Client not started"
-    else [serverStarted, fakeTargetStarted] `shouldBe` [True, True]
+    else [serverStarted, fakeTargetStarted2, fakeTargetStarted3] `shouldBe` [True, True, True]
   where
     reduceCommunication socket com = do
       sendAll socket $ S.pack (comSend com)
@@ -61,15 +64,15 @@ connect =
           Communication ([5, 1, 0, 1, 127, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 1, 127, 0, 0, 1] ++ portInBinary),
           Communication [1] [2]
         ]
-    -- it "Should transfer data from target on 'ipv6' CONNECT" $ do
-    --   port <- freePort
-    --   let portInBinary = toWord8 port
-    --   launchTest
-    --     port
-    --     [ Communication [5, 1, 0] [5, 0],
-    --       Communication ([5, 1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] ++ portInBinary),
-    --       Communication [1] [2]
-    --     ]
+    it "Should transfer data from target on 'ipv6' CONNECT" $ do
+      port <- freePort
+      let portInBinary = toWord8 port
+      launchTest
+        port
+        [ Communication [5, 1, 0] [5, 0],
+          Communication ([5, 1, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] ++ portInBinary),
+          Communication [1] [2]
+        ]
     it "Should transfer data from target on 'domain name' CONNECT" $ do
       port <- freePort
       let portInBinary = toWord8 port
