@@ -29,6 +29,10 @@ runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
       filter (filterIpByVersion ipType) <$> getAddrInfo (Just hints) realHost (Just port)
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
       setSocketOption sock ReuseAddr 1
+      if (addrFamily addr) == AF_INET6
+        then setSocketOption sock IPv6Only 1
+        else return ()
+
       withFdSocket sock setCloseOnExecIfNeeded
       bind sock $ addrAddress addr
       listen sock 1024
