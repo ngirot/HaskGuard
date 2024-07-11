@@ -20,4 +20,4 @@ configParser = fmap (fromMaybe defaultConfiguration) $
     return ServerConfiguration {scListen = unpack listen, scPort = port}
 
 defaultConfiguration :: ServerConfiguration
-defaultConfiguration = ServerConfiguration {scListen = "localhost", scPort = 3128}
+defaultConfiguration = ServerConfiguration {scListen = "0.0.0.0", scPort = 3128}
