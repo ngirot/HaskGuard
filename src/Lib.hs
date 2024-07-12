@@ -34,7 +34,6 @@ serve configuration logger onStartup = do
 
       logger ">>> Request"
       msgRequest <- receiveData s
-      logger $ show  msgRequest
       req <- manageRequest msgRequest (onConnect s)
       case req of
         Right _ -> logger "Ok"
@@ -43,13 +42,14 @@ serve configuration logger onStartup = do
     talk s = do
       logger ">>> Negotiation"
       msgNegociation <- receiveData s
-      logger $ show msgNegociation
 
       let nego = manageNegotiation msgNegociation
       case nego of
         Right d -> afterNego s d
         Left (NoResponseError err) -> logger $ "Error: " ++ err
         Left (ResponseError response) -> sendData s response
+    sendData = logSender logger
+    receiveData = logReceiver logger
 
 normalizeListen :: IpType -> String -> String
 normalizeListen IpV6 "0.0.0.0" = "::"
@@ -62,8 +62,13 @@ startOne configuration fn ipType = do
   threadId <- async $ runTCPServer ipType (normalizeListen ipType $ scListen configuration) (show $ scPort configuration) (putMVar mVar) fn
   pure $ (threadId, mVar)
 
-sendData :: Socket -> [Word8] -> IO ()
-sendData s dataToSend = sendAll s $ S.pack dataToSend
+logSender :: (String -> IO ()) -> Socket -> [Word8] -> IO ()
+logSender logger s dataToSend = do
+  logger $ "<<< " ++ show dataToSend
+  sendAll s $ S.pack dataToSend
 
-receiveData :: Socket -> IO ([Word8])
-receiveData s = S.unpack <$> recv s 4096
+logReceiver :: (String -> IO ()) -> Socket -> IO ([Word8])
+logReceiver logger s = do
+  d <- S.unpack <$> recv s 4096
+  logger $ ">>> " ++ show d
+  return d
