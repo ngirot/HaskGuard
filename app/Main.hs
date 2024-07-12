@@ -21,10 +21,13 @@ logStartup errors hosts = do
     decorate ho = map (\h -> "'" ++ h ++ "'") ho
 
 displayError :: String -> IO ()
-displayError msg = putStrLn $ color Red msg
+displayError "" = displayMessage ""
+displayError msg = displayMessage $ color Red msg
 
 displaySuccess :: String -> IO ()
-displaySuccess msg = putStrLn $ color Green msg
+displaySuccess "" = displayMessage ""
+displaySuccess msg = displayMessage $ color Green msg
 
 displayMessage :: String -> IO ()
-displayMessage = putStrLn
+displayMessage "" = return ()
+displayMessage s = putStrLn s
