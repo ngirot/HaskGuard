@@ -55,12 +55,8 @@ normalizeListen IpV6 "0.0.0.0" = "::"
 normalizeListen IpV4 "::" = "0.0.0.0"
 normalizeListen _ l = l
 
---startOne :: ServerConfiguration -> (Socket -> IO ()) -> IpType -> IO ((IO(Async (Either String ()))), IO(MVar (Either String String)))
--- startOne :: ServerConfiguration -> (Socket -> IO ()) -> IpType -> IO(MVar (Either String String))
 startOne :: ServerConfiguration -> (Socket -> IO ()) -> IpType -> IO ((Async (Either String ()), MVar (Either String String)))
 startOne configuration fn ipType = do
   mVar <- newEmptyMVar
   threadId <- async $ runTCPServer ipType (normalizeListen ipType $ scListen configuration) (show $ scPort configuration) (putMVar mVar) fn
-  -- pure mVar
-  -- pure threadId
   pure $ (threadId, mVar)
