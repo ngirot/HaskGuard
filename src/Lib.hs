@@ -5,6 +5,7 @@ import Control.Concurrent
 import Control.Concurrent.Async
 import qualified Data.ByteString as S
 import Data.Either
+import Data.Word (Word8)
 import Errors
 import Negotiation (manageNegotiation)
 import Network
@@ -23,32 +24,32 @@ serve configuration logger onStartup = do
   mapM_ wait $ fst <$> threads
   where
     onConnect s r ss = do
-      sendAll s $ S.pack r
+      sendData s r
       _ <- forkIO $ stream s ss
       stream ss s
       logger ">>> Completed"
 
     afterNego s d = do
-      sendAll s $ S.pack d
+      sendData s d
 
       logger ">>> Request"
-      msgRequest <- recv s 1024
-      logger $ show $ S.unpack msgRequest
-      req <- manageRequest (S.unpack msgRequest) (onConnect s)
+      msgRequest <- receiveData s
+      logger $ show  msgRequest
+      req <- manageRequest msgRequest (onConnect s)
       case req of
         Right _ -> logger "Ok"
         Left (NoResponseError err) -> logger $ "Error: " ++ err
-        Left (ResponseError response) -> sendAll s $ S.pack response
+        Left (ResponseError response) -> sendData s response
     talk s = do
       logger ">>> Negotiation"
-      msgNegociation <- recv s 1024
-      logger $ show $ S.unpack msgNegociation
+      msgNegociation <- receiveData s
+      logger $ show msgNegociation
 
-      let nego = manageNegotiation $ S.unpack msgNegociation
+      let nego = manageNegotiation msgNegociation
       case nego of
         Right d -> afterNego s d
         Left (NoResponseError err) -> logger $ "Error: " ++ err
-        Left (ResponseError response) -> sendAll s $ S.pack response
+        Left (ResponseError response) -> sendData s response
 
 normalizeListen :: IpType -> String -> String
 normalizeListen IpV6 "0.0.0.0" = "::"
@@ -60,3 +61,9 @@ startOne configuration fn ipType = do
   mVar <- newEmptyMVar
   threadId <- async $ runTCPServer ipType (normalizeListen ipType $ scListen configuration) (show $ scPort configuration) (putMVar mVar) fn
   pure $ (threadId, mVar)
+
+sendData :: Socket -> [Word8] -> IO ()
+sendData s dataToSend = sendAll s $ S.pack dataToSend
+
+receiveData :: Socket -> IO ([Word8])
+receiveData s = S.unpack <$> recv s 4096
