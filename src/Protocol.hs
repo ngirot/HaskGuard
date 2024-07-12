@@ -18,9 +18,9 @@ findNegotiationReturnCode message =
 findPort :: RequestMessage -> String
 findPort message = show $ (strong * 256 :: Int) + weak
   where
+    portBytes = requestPort message
     weak = fromIntegral $ portBytes !! 1
     strong = fromIntegral $ portBytes !! 0
-    portBytes = requestPort message
 
 findCommand :: RequestMessage -> Either Word8 Command
 findCommand message = case (requestCommand message) of
@@ -33,3 +33,10 @@ findIp message = case requestAddressType message of
   4 -> Right $ intercalate ":" $ map (\x -> showHex x "") $ doubleSize $ requestAddress message
   3 -> Right $ map BS.w2c (requestAddress message)
   _ -> Left 8
+  
+doubleSize :: [Word8] -> [Int]
+doubleSize content = do
+  let indexed = zip [0::Int ..] $ map fromIntegral $ content
+  let weak = map snd $ filter (odd . fst) indexed
+  let strong = map snd $ filter (even . fst) indexed
+  map (\a -> ((fst a) * 256) + (snd a)) $ zip strong weak

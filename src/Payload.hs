@@ -1,4 +1,4 @@
-module Payload (NegotiationMessage (..), RequestMessage (..), parseNegotiationInput, parseRequestInput, doubleSize, generateNegotiationOutput, generateRequestOutput) where
+module Payload (NegotiationMessage (..), RequestMessage (..), parseNegotiationInput, parseRequestInput, generateNegotiationOutput, generateRequestOutput) where
 
 import Data.Word (Word8)
 
@@ -71,10 +71,3 @@ parseRequestInput payload = do
 
 generateRequestOutput :: RequestMessage -> Word8 -> [Word8]
 generateRequestOutput message code = [requestVersion message, code, 0, (requestAddressType message)] ++ (requestAddress message) ++ (requestPort message)
-
-doubleSize :: [Word8] -> [Int]
-doubleSize content = do
-  let indexed = zip [0::Int ..] $ map fromIntegral $ content
-  let weak = map snd $ filter (odd . fst) indexed
-  let strong = map snd $ filter (even . fst) indexed
-  map (\a -> ((fst a) * 256) + (snd a)) $ zip strong weak
