@@ -8,22 +8,19 @@ import Data.Either
 import Errors
 import Negotiation (manageNegotiation)
 import Network
+import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
 import Request
 import Streaming (stream)
 
 serve :: ServerConfiguration -> (String -> IO ()) -> ([String] -> [String] -> IO ()) -> IO ()
 serve configuration logger onStartup = do
-  startedV4 <- newEmptyMVar
-  startedV6 <- newEmptyMVar
+  threads <- mapM (startOne configuration talk) [IpV4, IpV6]
 
-  threadV4 <- async $ runTCPServer IpV4 (normalizeListen IpV4 $ scListen configuration) (show $ scPort configuration) (putMVar startedV4) talk
-  threadV6 <- async $ runTCPServer IpV6 (normalizeListen IpV6 $ scListen configuration) (show $ scPort configuration) (putMVar startedV6) talk
-
-  hostsStarted <- mapM takeMVar [startedV4, startedV6]
+  hostsStarted <- mapM takeMVar $ fmap snd threads
   onStartup (lefts hostsStarted) (rights hostsStarted)
 
-  mapM_ wait [threadV4, threadV6]
+  mapM_ wait $ fmap fst threads
   where
     onConnect s r ss = do
       sendAll s $ S.pack r
@@ -56,4 +53,14 @@ serve configuration logger onStartup = do
 normalizeListen :: IpType -> String -> String
 normalizeListen IpV6 "0.0.0.0" = "::"
 normalizeListen IpV4 "::" = "0.0.0.0"
-normalizeListen _ listen = listen
+normalizeListen _ l = l
+
+--startOne :: ServerConfiguration -> (Socket -> IO ()) -> IpType -> IO ((IO(Async (Either String ()))), IO(MVar (Either String String)))
+-- startOne :: ServerConfiguration -> (Socket -> IO ()) -> IpType -> IO(MVar (Either String String))
+startOne :: ServerConfiguration -> (Socket -> IO ()) -> IpType -> IO ((Async (Either String ()), MVar (Either String String)))
+startOne configuration fn ipType = do
+  mVar <- newEmptyMVar
+  threadId <- async $ runTCPServer ipType (normalizeListen ipType $ scListen configuration) (show $ scPort configuration) (putMVar mVar) fn
+  -- pure mVar
+  -- pure threadId
+  pure $ (threadId, mVar)
