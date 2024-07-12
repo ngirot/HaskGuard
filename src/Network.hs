@@ -5,20 +5,28 @@ module Network (runTCPServer, runTCPClient, IpType (..)) where
 import qualified Control.Arrow as A
 import Control.Concurrent (forkFinally)
 import qualified Control.Exception as E
-import Control.Monad (forever, mfilter, void)
+import Control.Monad (forever, void)
 import Errors
 import Network.Socket
 
 data IpType = IpV6 | IpV4
 
-runTCPServer :: IpType -> Maybe HostName -> ServiceName -> (Maybe String -> IO ()) -> (Socket -> IO a) -> IO (Either String a)
+runTCPServer :: IpType -> HostName -> ServiceName -> (Either String String -> IO ()) -> (Socket -> IO a) -> IO (Either String a)
 runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
   addr <- resolve
   if length addr >= 1
-    then E.bracket (open $ head addr) close loop
+    then do
+      launchResult <- E.try @E.IOException $ E.bracket (open $ head addr) close loop
+      case launchResult of
+        Right r -> pure $ Right r
+        Left err -> do
+          let errorMessage = "Unable to listen on '" ++ (show mhost) ++ ":" ++ port ++ "' : " ++ show err
+          onConnect $ Left errorMessage
+          pure $ Left errorMessage
     else do
-      onConnect Nothing
-      return $ Left "Unable to launche server"
+      let errorMessage = "Unable to launche server"
+      onConnect $ Left errorMessage
+      return $ Left errorMessage
   where
     resolve = do
       let hints =
@@ -36,7 +44,7 @@ runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
       withFdSocket sock setCloseOnExecIfNeeded
       bind sock $ addrAddress addr
       listen sock 1024
-      onConnect $ Just $ formatConnection addr
+      onConnect $ Right $ formatConnection addr
       return sock
     loop sock = forever $
       E.bracketOnError (accept sock) (close . fst) $
@@ -47,7 +55,10 @@ runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
             -- non-atomic setups (e.g. spawning a subprocess to handle
             -- @conn@) before proper cleanup of @conn@ is your case
             forkFinally (server conn) (const $ gracefulClose conn 5000)
-    realHost = mfilter (/= "0.0.0.0") mhost
+    realHost = case mhost of
+      "0.0.0.0" -> Nothing
+      "::" -> Nothing
+      _ -> Just mhost
 
 runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO (Either NetworkError a)
 runTCPClient host port client = withSocketsDo $ do
