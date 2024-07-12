@@ -13,7 +13,7 @@ loadFileContent :: String -> IO (Either ConfigurationError String)
 loadFileContent fileName = do
   exists <- doesFileExist fileName
   if exists
-    then fmap (left mapError) (try @IOError $ readFile fileName)
+    then (left mapError) <$> (try @IOError $ readFile fileName)
     else pure $ Left FileDoesNotExists
   where
     mapError _ = FileNotReadable

@@ -17,10 +17,10 @@ serve :: ServerConfiguration -> (String -> IO ()) -> ([String] -> [String] -> IO
 serve configuration logger onStartup = do
   threads <- mapM (startOne configuration talk) [IpV4, IpV6]
 
-  hostsStarted <- mapM takeMVar $ fmap snd threads
+  hostsStarted <- mapM takeMVar $ snd <$> threads
   onStartup (lefts hostsStarted) (rights hostsStarted)
 
-  mapM_ wait $ fmap fst threads
+  mapM_ wait $ fst <$> threads
   where
     onConnect s r ss = do
       sendAll s $ S.pack r
