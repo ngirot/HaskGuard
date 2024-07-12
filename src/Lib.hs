@@ -5,6 +5,7 @@ import Control.Concurrent
 import Control.Concurrent.Async
 import qualified Data.ByteString as S
 import Data.Either
+import Data.UUID
 import Data.Word (Word8)
 import Errors
 import Negotiation (manageNegotiation)
@@ -13,6 +14,7 @@ import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
 import Request
 import Streaming (stream)
+import System.Random
 
 serve :: ServerConfiguration -> (String -> IO ()) -> ([String] -> [String] -> IO ()) -> IO ()
 serve configuration logger onStartup = do
@@ -23,33 +25,39 @@ serve configuration logger onStartup = do
 
   mapM_ wait $ fst <$> threads
   where
-    onConnect s r ss = do
-      sendData s r
-      _ <- forkIO $ stream s ss
-      stream ss s
-      logger ">>> Completed"
+    talk sock = do
+      uuid <- newUUID
+      onConnectionReceived logger uuid sock
 
+onConnectionReceived :: (String -> IO ()) -> UUID -> Socket -> IO ()
+onConnectionReceived logger requestId sock = do
+  requestIdLogger "+++ Opened"
+  msgNegociation <- receiveData sock
+
+  let nego = manageNegotiation msgNegociation
+  case nego of
+    Right d -> afterNego sock d
+    Left (NoResponseError err) -> requestIdLogger $ "Error: " ++ err
+    Left (ResponseError response) -> sendData sock response
+  where
+    requestIdLogger s = logger $ "[" ++ show requestId ++ "] " ++ s
+    sendData = logSender requestIdLogger
+    receiveData = logReceiver requestIdLogger
     afterNego s d = do
       sendData s d
 
-      logger ">>> Request"
       msgRequest <- receiveData s
       req <- manageRequest msgRequest (onConnect s)
       case req of
-        Right _ -> logger "Ok"
-        Left (NoResponseError err) -> logger $ "Error: " ++ err
-        Left (ResponseError response) -> sendData s response
-    talk s = do
-      logger ">>> Negotiation"
-      msgNegociation <- receiveData s
-
-      let nego = manageNegotiation msgNegociation
-      case nego of
-        Right d -> afterNego s d
-        Left (NoResponseError err) -> logger $ "Error: " ++ err
-        Left (ResponseError response) -> sendData s response
-    sendData = logSender logger
-    receiveData = logReceiver logger
+        Right _ -> requestIdLogger "--- Closed"
+        Left (NoResponseError err) -> requestIdLogger $ "--- Closed: " ++ err
+        Left (ResponseError response) -> do
+          sendData s response
+          requestIdLogger "--- Closed"
+    onConnect s r ss = do
+      sendData s r
+      _ <- forkIO $ stream (\msg -> requestIdLogger $ "|>>" ++ msg) s ss
+      stream (\msg -> requestIdLogger $ "|<<" ++ msg) ss s
 
 normalizeListen :: IpType -> String -> String
 normalizeListen IpV6 "0.0.0.0" = "::"
@@ -72,3 +80,6 @@ logReceiver logger s = do
   d <- S.unpack <$> recv s 4096
   logger $ ">>> " ++ show d
   return d
+
+newUUID :: IO UUID
+newUUID = randomIO
