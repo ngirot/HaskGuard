@@ -32,19 +32,19 @@ serve configuration logger onStartup = do
 onConnectionReceived :: (String -> IO ()) -> UUID -> Socket -> IO ()
 onConnectionReceived logger requestId sock = do
   requestIdLogger "+++ Opened"
-  msgNegociation <- receiveData sock
+  msgNegotiation <- receiveData sock
 
-  let nego = manageNegotiation msgNegociation
-  case nego of
-    Right d -> afterNego sock d
+  let negotiation = manageNegotiation msgNegotiation
+  case negotiation of
+    Right d -> afterNegotiation sock d
     Left (NoResponseError err) -> requestIdLogger $ "Error: " ++ err
     Left (ResponseError response) -> sendData sock response
   where
-    requestIdLogger s = logger $ "[" ++ show requestId ++ "] " ++ s
+    requestIdLogger msg = logger $ "[" ++ show requestId ++ "] " ++ msg
     sendData = logSender requestIdLogger
     receiveData = logReceiver requestIdLogger
-    afterNego s d = do
-      sendData s d
+    afterNegotiation s content = do
+      sendData s content
 
       msgRequest <- receiveData s
       req <- manageRequest msgRequest (onConnect s)
@@ -54,15 +54,15 @@ onConnectionReceived logger requestId sock = do
         Left (ResponseError response) -> do
           sendData s response
           requestIdLogger "--- Closed"
-    onConnect s r ss = do
-      sendData s r
-      _ <- forkIO $ stream (\msg -> requestIdLogger $ "|>>" ++ msg) s ss
-      stream (\msg -> requestIdLogger $ "|<<" ++ msg) ss s
+    onConnect socketSource content socketDestination = do
+      sendData socketSource content
+      _ <- forkIO $ stream (\msg -> requestIdLogger $ "|>>" ++ msg) socketSource socketDestination
+      stream (\msg -> requestIdLogger $ "|<<" ++ msg) socketDestination socketSource
 
 normalizeListen :: IpType -> String -> String
 normalizeListen IpV6 "0.0.0.0" = "::"
 normalizeListen IpV4 "::" = "0.0.0.0"
-normalizeListen _ l = l
+normalizeListen _ host = host
 
 startOne :: ServerConfiguration -> (Socket -> IO ()) -> IpType -> IO ((Async (Either String ()), MVar (Either String String)))
 startOne configuration fn ipType = do
@@ -71,15 +71,15 @@ startOne configuration fn ipType = do
   pure $ (threadId, mVar)
 
 logSender :: (String -> IO ()) -> Socket -> [Word8] -> IO ()
-logSender logger s dataToSend = do
+logSender logger sock dataToSend = do
   logger $ "<<< " ++ show dataToSend
-  sendAll s $ S.pack dataToSend
+  sendAll sock $ S.pack dataToSend
 
 logReceiver :: (String -> IO ()) -> Socket -> IO ([Word8])
-logReceiver logger s = do
-  d <- S.unpack <$> recv s 4096
-  logger $ ">>> " ++ show d
-  return d
+logReceiver logger sock = do
+  content <- S.unpack <$> recv sock 4096
+  logger $ ">>> " ++ show content
+  return content
 
 newUUID :: IO UUID
 newUUID = randomIO

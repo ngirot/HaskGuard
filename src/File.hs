@@ -11,8 +11,8 @@ data ConfigurationError = FileDoesNotExists | FileNotReadable
 
 loadFileContent :: String -> IO (Either ConfigurationError String)
 loadFileContent fileName = do
-  exists <- doesFileExist fileName
-  if exists
+  fileExists <- doesFileExist fileName
+  if fileExists
     then (left mapError) <$> (try @IOError $ readFile fileName)
     else pure $ Left FileDoesNotExists
   where

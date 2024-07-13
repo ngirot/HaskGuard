@@ -13,8 +13,6 @@ load = do
   content <- loadFileContent "config.ini"
 
   case content of
-    Right fileContent -> pure $ left mapError $ parseIniFile (pack fileContent) configParser
+    Right fileContent -> pure $ left BadConfiguration $ parseIniFile (pack fileContent) configParser
     Left FileDoesNotExists -> pure $ Right defaultConfiguration
-    Left e -> pure $ Left $ ConfigurationNotAccessible ("Unable to load configuration file " ++ (show e))
-  where
-    mapError e = BadConfiguration e
+    Left err -> pure $ Left $ ConfigurationNotAccessible ("Unable to load configuration file " ++ (show err))

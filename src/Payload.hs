@@ -22,8 +22,7 @@ parseNegotiationInput payload = do
   let version = extractVersion payload
   let methods = extractNumberOfMethods payload >>= extractMethods payload
 
-  let message = NegotiationMessage version <$> methods
-  message
+  NegotiationMessage version <$> methods
   where
     extractVersion p = p !! 0
     extractNumberOfMethods p =
@@ -67,7 +66,6 @@ parseRequestInput payload = do
         if length payload > 7
           then Right $ take (length p -2 - 4) $ drop 4 p
           else Left "Invalid payload size"
-
 
 generateRequestOutput :: RequestMessage -> Word8 -> [Word8]
 generateRequestOutput message code = [requestVersion message, code, 0, (requestAddressType message)] ++ (requestAddress message) ++ (requestPort message)

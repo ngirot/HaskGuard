@@ -29,14 +29,14 @@ findCommand message = case (requestCommand message) of
 
 findIp :: RequestMessage -> Either Word8 String
 findIp message = case requestAddressType message of
-  1 -> Right $ intercalate "." $ map show (requestAddress message)
+  1 -> Right $ intercalate "." $ map show $ requestAddress message
   4 -> Right $ intercalate ":" $ map (\x -> showHex x "") $ doubleSize $ requestAddress message
-  3 -> Right $ map BS.w2c (requestAddress message)
+  3 -> Right $ map BS.w2c $ requestAddress message
   _ -> Left 8
 
 doubleSize :: [Word8] -> [Int]
 doubleSize content = do
-  let indexed = zip [0::Int ..] $ map fromIntegral $ content
+  let indexed = zip [0 :: Int ..] $ map fromIntegral $ content
   let weak = snd <$> filter (odd . fst) indexed
   let strong = snd <$> filter (even . fst) indexed
   map (\a -> ((fst a) * 256) + (snd a)) $ zip strong weak

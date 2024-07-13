@@ -40,8 +40,7 @@ buildCommand message = left mapError $ findCommand message
 connectCommand :: RequestMessage -> String -> String -> ([Word8] -> Socket -> IO a) -> IO (Either RequestError a)
 connectCommand message host port onConnect = do
   let resulPayload = generateRequestOutput message 0
-  left (mapError message) <$> runTCPClient host port (onConnect resulPayload)
+  left mapError <$> runTCPClient host port (onConnect resulPayload)
   where
-    mapError m ConnectionRefused = ResponseError $ generateRequestOutput m 5
-    mapError m NameOrServiceNotKnown = ResponseError $ generateRequestOutput m 4
-
+    mapError ConnectionRefused = ResponseError $ generateRequestOutput message 5
+    mapError NameOrServiceNotKnown = ResponseError $ generateRequestOutput message 4

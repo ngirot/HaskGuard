@@ -11,6 +11,6 @@ manageNegotiation payload = do
   let code = input >>= generateCode
   generatePayload <$> input <*> code
   where
-    input = left (\message -> NoResponseError message) $ parseNegotiationInput payload
+    input = left NoResponseError $ parseNegotiationInput payload
     generateCode i = left (\code -> ResponseError $ generateNegotiationOutput i code) $ findNegotiationReturnCode i
     generatePayload i code = generateNegotiationOutput i code

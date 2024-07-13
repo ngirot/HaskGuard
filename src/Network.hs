@@ -12,7 +12,7 @@ import Network.Socket
 data IpType = IpV6 | IpV4
 
 runTCPServer :: IpType -> HostName -> ServiceName -> (Either String String -> IO ()) -> (Socket -> IO a) -> IO (Either String a)
-runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
+runTCPServer ipType host port onConnect server = withSocketsDo $ do
   addrResolved <- resolve
   case addrResolved of
     Right addr -> do
@@ -21,19 +21,13 @@ runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
           launchResult <- E.try @E.IOException $ E.bracket (open $ head addr) close loop
           case launchResult of
             Right r -> pure $ Right r
-            Left err -> do
-              let errorMessage = "Unable to listen on '" ++ (show mhost) ++ ":" ++ port ++ "' : " ++ show err
-              onConnect $ Left errorMessage
-              pure $ Left errorMessage
-        else do
-          let errorMessage = ""
-          onConnect $ Left errorMessage
-          return $ Left errorMessage
-    Left _ -> do
-      let errorMessage = "Not network interface found for " ++ (show mhost) ++ ":" ++ port
-      onConnect $ Left errorMessage
-      return $ Left errorMessage
+            Left err -> finalize $ "Unable to listen on '" ++ (show host) ++ ":" ++ port ++ "' : " ++ show err
+        else finalize ""
+    Left _ -> finalize $ "Not network interface found for " ++ (show host) ++ ":" ++ port
   where
+    finalize message = do
+      onConnect $ Left message
+      return $ Left message
     resolve = do
       let hints =
             defaultHints
@@ -61,24 +55,24 @@ runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
             -- non-atomic setups (e.g. spawning a subprocess to handle
             -- @conn@) before proper cleanup of @conn@ is your case
             forkFinally (server conn) (const $ gracefulClose conn 5000)
-    realHost = case mhost of
+    realHost = case host of
       "0.0.0.0" -> Nothing
       "::" -> Nothing
-      _ -> Just mhost
+      _ -> Just host
 
 runTCPClient :: HostName -> ServiceName -> (Socket -> IO a) -> IO (Either NetworkError a)
 runTCPClient host port client = withSocketsDo $ do
-  addr <- resolve
-  case addr of
-    Right r -> A.left mapCon <$> launchConnect r
-    Left x -> pure $ Left x
+  resolvedAddr <- resolve
+  case resolvedAddr of
+    Right addr -> A.left mapCon <$> launchConnect addr
+    Left err -> pure $ Left err
   where
     mapCon _ = ConnectionRefused
-    launchConnect a = E.try @E.IOException $ E.bracket (open a) close client
+    launchConnect addr = E.try @E.IOException $ E.bracket (open addr) close client
     resolve = do
       let hints = defaultHints {addrSocketType = Stream}
-      e <- E.try @E.IOException $ getAddrInfo (Just hints) (Just host) (Just port)
-      case e of
+      addrResult <- E.try @E.IOException $ getAddrInfo (Just hints) (Just host) (Just port)
+      case addrResult of
         Right b -> pure $ Right $ head b
         Left _ -> pure $ Left NameOrServiceNotKnown
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
