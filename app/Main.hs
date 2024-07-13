@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Data.List (intercalate)
+import Data.List (intercalate, nub)
 import Lib (serve)
 import Loader
 import System.Console.Pretty (Color (..), color)
@@ -15,9 +15,9 @@ main = do
 
 logStartup :: [String] -> [String] -> IO ()
 logStartup errors hosts = do
-  mapM_ displayError errors
+  mapM_ displayError $ nub $ errors
   if length hosts >= 1
-    then displaySuccess $ "Start listening on " ++ (intercalate " and " $ decorate hosts) ++ "..."
+    then displaySuccess $ "Start listening on " ++ (intercalate " and " $ decorate $ hosts) ++ "..."
     else return ()
   where
     decorate ho = map (\h -> "'" ++ h ++ "'") ho

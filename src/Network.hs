@@ -13,18 +13,24 @@ data IpType = IpV6 | IpV4
 
 runTCPServer :: IpType -> HostName -> ServiceName -> (Either String String -> IO ()) -> (Socket -> IO a) -> IO (Either String a)
 runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
-  addr <- resolve
-  if length addr >= 1
-    then do
-      launchResult <- E.try @E.IOException $ E.bracket (open $ head addr) close loop
-      case launchResult of
-        Right r -> pure $ Right r
-        Left err -> do
-          let errorMessage = "Unable to listen on '" ++ (show mhost) ++ ":" ++ port ++ "' : " ++ show err
+  addrResolved <- resolve
+  case addrResolved of
+    Right addr -> do
+      if length addr >= 1
+        then do
+          launchResult <- E.try @E.IOException $ E.bracket (open $ head addr) close loop
+          case launchResult of
+            Right r -> pure $ Right r
+            Left err -> do
+              let errorMessage = "Unable to listen on '" ++ (show mhost) ++ ":" ++ port ++ "' : " ++ show err
+              onConnect $ Left errorMessage
+              pure $ Left errorMessage
+        else do
+          let errorMessage = ""
           onConnect $ Left errorMessage
-          pure $ Left errorMessage
-    else do
-      let errorMessage = ""
+          return $ Left errorMessage
+    Left _ -> do
+      let errorMessage = "Not network interface found for " ++ (show mhost) ++ ":" ++ port
       onConnect $ Left errorMessage
       return $ Left errorMessage
   where
@@ -34,7 +40,7 @@ runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
               { addrFlags = [AI_PASSIVE],
                 addrSocketType = Stream
               }
-      filter (filterIpByVersion ipType) <$> getAddrInfo (Just hints) realHost (Just port)
+      E.try @E.IOException $ filter (filterIpByVersion ipType) <$> getAddrInfo (Just hints) realHost (Just port)
     open addr = E.bracketOnError (openSocket addr) close $ \sock -> do
       setSocketOption sock ReuseAddr 1
       if (addrFamily addr) == AF_INET6
