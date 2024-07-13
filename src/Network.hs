@@ -24,7 +24,7 @@ runTCPServer ipType mhost port onConnect server = withSocketsDo $ do
           onConnect $ Left errorMessage
           pure $ Left errorMessage
     else do
-      let errorMessage = "Unable to launche server"
+      let errorMessage = ""
       onConnect $ Left errorMessage
       return $ Left errorMessage
   where

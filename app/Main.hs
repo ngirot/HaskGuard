@@ -15,8 +15,10 @@ main = do
 
 logStartup :: [String] -> [String] -> IO ()
 logStartup errors hosts = do
-  displayError $ intercalate " | " errors
-  displaySuccess $ "Start listening on " ++ (intercalate " and " $ decorate hosts) ++ "..."
+  mapM_ displayError errors
+  if length hosts >= 1
+    then displaySuccess $ "Start listening on " ++ (intercalate " and " $ decorate hosts) ++ "..."
+    else return ()
   where
     decorate ho = map (\h -> "'" ++ h ++ "'") ho
 
