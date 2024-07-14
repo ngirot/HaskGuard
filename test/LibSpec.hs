@@ -49,7 +49,7 @@ launchTest port communications = do
       sendAll socket $ S.pack (comSend com)
       received <- S.unpack <$> recv socket 4096
       received `shouldBe` comReceived com
-    mult2Server socket = do
+    mult2Server socket _ = do
       received <- S.unpack <$> recv socket 4096
       sendAll socket $ S.pack $ [(received !! 0) * 2]
 

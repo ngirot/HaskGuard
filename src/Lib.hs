@@ -25,19 +25,19 @@ serve configuration logger onStartup = do
 
   mapM_ wait $ fst <$> threads
   where
-    talk sock = do
+    talk sock clientAddr = do
       uuid <- newUUID
-      onConnectionReceived logger uuid sock
+      onConnectionReceived logger uuid sock clientAddr
 
-onConnectionReceived :: (String -> IO ()) -> UUID -> Socket -> IO ()
-onConnectionReceived logger requestId sock = do
-  requestIdLogger "+++ Opened"
+onConnectionReceived :: (String -> IO ()) -> UUID -> Socket -> SockAddr -> IO ()
+onConnectionReceived logger requestId sock clientAddr = do
+  requestIdLogger $ "+++ Opened from " ++ show clientAddr
   msgNegotiation <- receiveData sock
 
   let negotiation = manageNegotiation msgNegotiation
   case negotiation of
     Right d -> afterNegotiation sock d
-    Left (NoResponseError err) -> requestIdLogger $ "Error: " ++ err
+    Left (NoResponseError err) -> requestIdLogger $ "--- Closed with Error: " ++ err
     Left (ResponseError response) -> sendData sock response
   where
     requestIdLogger msg = logger $ "[" ++ show requestId ++ "] " ++ msg
@@ -64,7 +64,7 @@ normalizeListen IpV6 "0.0.0.0" = "::"
 normalizeListen IpV4 "::" = "0.0.0.0"
 normalizeListen _ host = host
 
-startOne :: ServerConfiguration -> (Socket -> IO ()) -> IpType -> IO ((Async (Either String ()), MVar (Either String String)))
+startOne :: ServerConfiguration -> (Socket -> SockAddr -> IO ()) -> IpType -> IO ((Async (Either String ()), MVar (Either String String)))
 startOne configuration fn ipType = do
   mVar <- newEmptyMVar
   threadId <- async $ runTCPServer ipType (normalizeListen ipType $ scListen configuration) (show $ scPort configuration) (putMVar mVar) fn

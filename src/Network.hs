@@ -11,7 +11,7 @@ import Network.Socket
 
 data IpType = IpV6 | IpV4
 
-runTCPServer :: IpType -> HostName -> ServiceName -> (Either String String -> IO ()) -> (Socket -> IO a) -> IO (Either String a)
+runTCPServer :: IpType -> HostName -> ServiceName -> (Either String String -> IO ()) -> (Socket -> SockAddr -> IO a) -> IO (Either String a)
 runTCPServer ipType host port onConnect server = withSocketsDo $ do
   addrResolved <- resolve
   case addrResolved of
@@ -54,7 +54,7 @@ runTCPServer ipType host port onConnect server = withSocketsDo $ do
             -- but 'E.bracketOnError' above will be necessary if some
             -- non-atomic setups (e.g. spawning a subprocess to handle
             -- @conn@) before proper cleanup of @conn@ is your case
-            forkFinally (server conn) (const $ gracefulClose conn 5000)
+            forkFinally (server conn _peer) (const $ gracefulClose conn 5000)
     realHost = case host of
       "0.0.0.0" -> Nothing
       "::" -> Nothing
