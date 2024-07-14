@@ -3,13 +3,18 @@ module Main (main) where
 import Data.List (intercalate, nub)
 import Lib (serve)
 import Loader
+import Logs
 import System.Console.Pretty (Color (..), color)
+import System.Log.Logger
 
 main :: IO ()
 main = do
+  initLogger
+  requestLogger <- getLogger "HaskGuard.request"
+
   loadedConf <- load
   case loadedConf of
-    Right conf -> serve conf displayMessage logStartup
+    Right conf -> serve conf (logL requestLogger DEBUG) logStartup
     Left (ConfigurationNotAccessible e) -> displayError $ "Unable to load configuration " ++ show e
     Left (BadConfiguration e) -> displayError $ "Bad configuration " ++ show e
 

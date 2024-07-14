@@ -4,6 +4,7 @@ out
 *.cabal
 *.iml
 *~
+*.log
 
 config.ini
 config.ini.*
