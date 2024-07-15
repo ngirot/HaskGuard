@@ -8,7 +8,7 @@ import File
 
 data LoadingError = BadConfiguration String | ConfigurationNotAccessible String
 
-load :: IO (Either LoadingError ServerConfiguration)
+load :: IO (Either LoadingError ApplicationConfiguration)
 load = do
   content <- loadFileContent "config.ini"
 

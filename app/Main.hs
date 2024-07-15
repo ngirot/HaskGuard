@@ -1,5 +1,6 @@
 module Main (main) where
 
+import Config
 import Data.List (intercalate, nub)
 import Lib (serve)
 import Loader
@@ -8,12 +9,14 @@ import System.Log.Logger
 
 main :: IO ()
 main = do
-  initLogger
+  loadedConf <- load
+  let startupConfiguration = either (\_ -> defaultConfiguration) (\x -> x) loadedConf
+
+  initLogger (acLog startupConfiguration)
   requestLogger <- getLogger "HaskGuard"
 
-  loadedConf <- load
   case loadedConf of
-    Right conf -> serve conf (displayDebug requestLogger) (logStartup requestLogger)
+    Right conf -> serve (acServer conf) (displayDebug requestLogger) (logStartup requestLogger)
     Left (ConfigurationNotAccessible e) -> displayError requestLogger $ "Unable to load configuration " ++ show e
     Left (BadConfiguration e) -> displayError requestLogger $ "Bad configuration " ++ show e
 
