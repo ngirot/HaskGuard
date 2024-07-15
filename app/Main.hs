@@ -4,37 +4,39 @@ import Data.List (intercalate, nub)
 import Lib (serve)
 import Loader
 import Logs
-import System.Console.Pretty (Color (..), color)
 import System.Log.Logger
 
 main :: IO ()
 main = do
   initLogger
-  requestLogger <- getLogger "HaskGuard.request"
+  requestLogger <- getLogger "HaskGuard"
 
   loadedConf <- load
   case loadedConf of
-    Right conf -> serve conf (logL requestLogger DEBUG) logStartup
-    Left (ConfigurationNotAccessible e) -> displayError $ "Unable to load configuration " ++ show e
-    Left (BadConfiguration e) -> displayError $ "Bad configuration " ++ show e
+    Right conf -> serve conf (displayDebug requestLogger) (logStartup requestLogger)
+    Left (ConfigurationNotAccessible e) -> displayError requestLogger $ "Unable to load configuration " ++ show e
+    Left (BadConfiguration e) -> displayError requestLogger $ "Bad configuration " ++ show e
 
-logStartup :: [String] -> [String] -> IO ()
-logStartup errors hosts = do
-  mapM_ displayError $ nub $ errors
+logStartup :: Logger -> [String] -> [String] -> IO ()
+logStartup logger errors hosts = do
+  mapM_ (displayError logger) $ nub $ errors
   if length hosts >= 1
-    then displaySuccess $ "Start listening on " ++ (intercalate " and " $ decorate $ hosts) ++ "..."
+    then displaySuccess logger $ "Start listening on " ++ (intercalate " and " $ decorate $ hosts) ++ "..."
     else return ()
   where
     decorate ho = map (\h -> "'" ++ h ++ "'") ho
 
-displayError :: String -> IO ()
-displayError "" = displayMessage ""
-displayError msg = displayMessage $ color Red msg
+displayError :: Logger -> String -> IO ()
+displayError _ "" = return ()
+displayError logger msg = do
+  logL logger ERROR msg
 
-displaySuccess :: String -> IO ()
-displaySuccess "" = displayMessage ""
-displaySuccess msg = displayMessage $ color Green msg
+displaySuccess :: Logger -> String -> IO ()
+displaySuccess _ "" = return ()
+displaySuccess logger msg = do
+  logL logger NOTICE msg
 
-displayMessage :: String -> IO ()
-displayMessage "" = return ()
-displayMessage s = putStrLn s
+displayDebug :: Logger -> String -> IO ()
+displayDebug _ "" = return ()
+displayDebug logger msg = do
+  logL logger DEBUG msg

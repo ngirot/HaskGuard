@@ -1,5 +1,6 @@
-module Logs(initLogger) where
+module Logs (initLogger) where
 
+import System.Console.Pretty (Color (..), color)
 import System.IO (stdout)
 import System.Log.Formatter
 import System.Log.Handler (setFormatter)
@@ -10,7 +11,7 @@ initLogger :: IO ()
 initLogger = do
   -- console
   consoleHdlr <- streamHandler stdout DEBUG
-  let consoleFormatter = simpleLogFormatter $ "$msg"
+  let consoleFormatter = customFormatter
   let console = setFormatter consoleHdlr consoleFormatter
 
   -- file
@@ -19,3 +20,8 @@ initLogger = do
   let file = setFormatter fileHdlr fileFormatter
 
   updateGlobalLogger rootLoggerName $ setLevel DEBUG . setHandlers [console, file]
+
+customFormatter :: LogFormatter a
+customFormatter _ (NOTICE, msg) _ = return $ color Green msg
+customFormatter _ (ERROR, msg) _ = return $ color Red msg
+customFormatter _ (_, msg) _ = return msg
