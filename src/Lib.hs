@@ -47,7 +47,7 @@ onConnectionReceived logger requestId sock clientAddr = do
       sendData s content
 
       msgRequest <- receiveData s
-      req <- manageRequest msgRequest (onConnect s)
+      req <- manageRequest requestIdLogger msgRequest (onConnect s)
       case req of
         Right _ -> requestIdLogger "--- Closed"
         Left (NoResponseError err) -> requestIdLogger $ "--- Closed: " ++ err
