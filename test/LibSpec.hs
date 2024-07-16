@@ -80,7 +80,7 @@ connect =
       launchTest
         port
         [ Communication [5, 1, 0] [5, 0],
-          Communication ([5, 1, 0, 3, 108, 111, 99, 97, 108, 104, 111, 115, 116] ++ portInBinary) ([5, 0, 0, 3, 108, 111, 99, 97, 108, 104, 111, 115, 116] ++ portInBinary),
+          Communication ([5, 1, 0, 3, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116] ++ portInBinary) ([5, 0, 0, 3, 9, 108, 111, 99, 97, 108, 104, 111, 115, 116] ++ portInBinary),
           Communication [1] [2] -- payload
         ]
     it "Should send '4' as error code when 'domain name' doest not exists for CONNECT" $ do
@@ -88,7 +88,7 @@ connect =
       launchTest
         port
         [ Communication [5, 1, 0] [5, 0],
-          Communication [5, 1, 0, 3, 104, 111, 115, 116, 46, 102, 97, 107, 101, 0, 80] [5, 4, 0, 3, 104, 111, 115, 116, 46, 102, 97, 107, 101, 0, 80]
+          Communication [5, 1, 0, 3, 9, 104, 111, 115, 116, 46, 102, 97, 107, 101, 0, 80] [5, 4, 0, 3, 9, 104, 111, 115, 116, 46, 102, 97, 107, 101, 0, 80]
         ]
     it "Should send '5' as error code on a connection refused during CONNECT" $ do
       port <- freePort

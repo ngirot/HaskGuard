@@ -33,10 +33,14 @@ requestInput =
     it "Should accept ipv6" $ parseRequestInput [5, 1, 0, 4, 32, 1, 13, 184, 133, 163, 0, 0, 0, 0, 138, 46, 3, 112, 115, 52, 1, 187] `shouldBe` (Right $ RequestMessage 5 1 4 [32, 1, 13, 184, 133, 163, 0, 0, 0, 0, 138, 46, 3, 112, 115, 52] [1, 187])
     it "Should reject payload with invalid ipv6 size" $ parseRequestInput [5, 1, 0, 1, 32, 1, 13, 184, 133, 163, 0, 0, 0, 0, 138, 46, 3, 112, 115, 1, 187] `shouldBe` Left "Invalid payload size"
     it "Should reject payload with invalid port size" $ parseRequestInput [5, 1, 0, 1, 32, 1, 13, 184, 133, 163, 0, 0, 0, 0, 138, 46, 3, 112, 115, 52, 187] `shouldBe` Left "Invalid payload size"
-    it "Should accept DomainName" $ parseRequestInput [5, 1, 0, 3, 119, 119, 119, 46, 103, 111, 111, 103, 108, 101, 46, 99, 111, 109, 0, 80] `shouldBe` (Right $ RequestMessage 5 1 3 [119, 119, 119, 46, 103, 111, 111, 103, 108, 101, 46, 99, 111, 109] [0, 80])
+    it "Should accept DomainName" $ parseRequestInput [5, 1, 0, 3, 14, 119, 119, 119, 46, 103, 111, 111, 103, 108, 101, 46, 99, 111, 109, 0, 80] `shouldBe` (Right $ RequestMessage 5 1 3 [119, 119, 119, 46, 103, 111, 111, 103, 108, 101, 46, 99, 111, 109] [0, 80])
     it "Should reject DomainName with no domain name" $ parseRequestInput [5, 1, 0, 3, 0, 80] `shouldBe` Left "Invalid payload size"
+    it "Should reject DomainName with empty domain name" $ parseRequestInput [5, 1, 0, 3, 0, 0, 80] `shouldBe` Left "Invalid payload size"
+    it "Should reject DomainName with size too big" $ parseRequestInput [5, 1, 0, 3, 50, 1, 0, 80] `shouldBe` Left "Invalid payload size"
+    it "Should reject DomainName with size too small" $ parseRequestInput [5, 1, 0, 3, 1, 111, 111, 111, 0, 80] `shouldBe` Left "Invalid payload size"
 
 requestOutput :: Spec
 requestOutput =
   describe "Request output" $ do
-    it "Should create output" $ (generateRequestOutput (RequestMessage 5 1 3 [4, 5, 6] [7, 8]) 12) `shouldBe` [5, 12, 0, 3, 4, 5, 6, 7, 8]
+    it "Should create output from non 'Domain name' address" $ (generateRequestOutput (RequestMessage 5 1 1 [4, 5, 6] [7, 8]) 12) `shouldBe` [5, 12, 0, 1, 4, 5, 6, 7, 8]
+    it "Should create with address size setted correctly when addresse type is 'Domain name'" $ (generateRequestOutput (RequestMessage 5 1 3 [4, 5, 6, 6, 6] [7, 8]) 12) `shouldBe` [5, 12, 0, 3, 5, 4, 5, 6, 6, 6, 7, 8]

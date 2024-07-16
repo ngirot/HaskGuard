@@ -62,10 +62,25 @@ parseRequestInput payload = do
         if length payload == 22
           then Right $ take (length p -2 - 4) $ drop 4 p
           else Left "Invalid payload size"
+      3 ->
+        if length payload >= 7 && isVariablePayloadSizeValid
+          then Right $ take (length p -3 - 4) $ drop 5 p
+          else Left "Invalid payload size"
       _ ->
-        if length payload > 7
+        if length payload >= 7
           then Right $ take (length p -2 - 4) $ drop 4 p
           else Left "Invalid payload size"
 
+    isVariablePayloadSizeValid = do
+      let size = fromIntegral $ payload !! 4
+      let isSizeConsistent = size + 7 == length payload
+      let isSizeNotEmpty = size /= 0
+      isSizeConsistent && isSizeNotEmpty
+
 generateRequestOutput :: RequestMessage -> Word8 -> [Word8]
-generateRequestOutput message code = [requestVersion message, code, 0, (requestAddressType message)] ++ (requestAddress message) ++ (requestPort message)
+generateRequestOutput message code =
+  build $ requestAddressType message
+  where
+    build addrType = case addrType of
+      3 -> [requestVersion message, code, 0, addrType, (fromIntegral $ length $ requestAddress message)] ++ (requestAddress message) ++ (requestPort message)
+      _ -> [requestVersion message, code, 0, addrType] ++ (requestAddress message) ++ (requestPort message)
