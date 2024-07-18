@@ -1,5 +1,6 @@
 module Lib (serve) where
 
+import Authentication
 import Config
 import Control.Concurrent
 import Control.Concurrent.Async
@@ -8,7 +9,7 @@ import Data.Either
 import Data.UUID
 import Data.Word (Word8)
 import Errors
-import Negotiation (manageNegotiation)
+import Negotiation (NegotiationResult (..), manageNegotiation)
 import Network
 import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
@@ -36,13 +37,25 @@ onConnectionReceived logger requestId sock clientAddr = do
 
   let negotiation = manageNegotiation msgNegotiation
   case negotiation of
-    Right d -> afterNegotiation sock d
-    Left (NoResponseError err) -> requestIdLogger $ "--- Closed with Error: " ++ err
-    Left (ResponseError response) -> sendData sock response
+    NoAuthenticationResult d -> afterNegotiation sock d
+    UsernamePasswordResult d -> authenticate sock d
+    NegotiationError (NoResponseError err) -> requestIdLogger $ "--- Closed with Error: " ++ err
+    NegotiationError (ResponseError response) -> sendData sock response
   where
     requestIdLogger msg = logger $ "[" ++ show requestId ++ "] " ++ msg
     sendData = logSender requestIdLogger
     receiveData = logReceiver requestIdLogger
+    authenticate s content = do
+      sendData s content
+      authPayload <- receiveData s
+      let authenResult = manageAuthentication authPayload
+      case authenResult of
+        Right ppp -> afterNegotiation s ppp
+        Left (NoResponseError err) -> requestIdLogger $ "--- Closed: " ++ err
+        Left (ResponseError response) -> do
+          sendData s response
+          requestIdLogger "--- Closed"
+
     afterNegotiation s content = do
       sendData s content
 

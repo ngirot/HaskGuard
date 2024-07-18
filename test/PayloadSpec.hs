@@ -9,6 +9,8 @@ spec = do
   negotiationOutput
   requestInput
   requestOutput
+  usernamePasswordInput
+  usernamePasswordOutput
 
 negotiationInput :: Spec
 negotiationInput =
@@ -44,3 +46,17 @@ requestOutput =
   describe "Request output" $ do
     it "Should create output from non 'Domain name' address" $ (generateRequestOutput (RequestMessage 5 1 1 [4, 5, 6] [7, 8]) 12) `shouldBe` [5, 12, 0, 1, 4, 5, 6, 7, 8]
     it "Should create with address size setted correctly when addresse type is 'Domain name'" $ (generateRequestOutput (RequestMessage 5 1 3 [4, 5, 6, 6, 6] [7, 8]) 12) `shouldBe` [5, 12, 0, 3, 5, 4, 5, 6, 6, 6, 7, 8]
+
+usernamePasswordInput :: Spec
+usernamePasswordInput =
+  describe "Username and password input" $ do
+    it "Should accept valid username and password" $ parseUserPasswordInput [5, 4, 117, 115, 101, 114, 8, 112, 97, 115, 115, 119, 111, 114, 100] `shouldBe` (Right $ UserPasswordMessage 5 [117, 115, 101, 114] [112, 97, 115, 115, 119, 111, 114, 100])
+    it "Should reject payload with no username" $ parseUserPasswordInput [5, 0, 1, 112] `shouldBe` Left "Invalid payload: no username given"
+    it "Should reject payload with no password" $ parseUserPasswordInput [5, 1, 112, 0] `shouldBe` Left "Invalid payload: no password given"
+    it "Should reject payload when given sizes are bigger than payload" $ parseUserPasswordInput [3, 112, 8, 10] `shouldBe` Left "Invalid payload size"
+    it "Should reject payload when given sizes are smaller than payload" $ parseUserPasswordInput [1, 112, 1, 10, 12] `shouldBe` Left "Invalid payload size"
+
+usernamePasswordOutput :: Spec
+usernamePasswordOutput =
+  describe "Username and password output" $ do
+    it "Should create output with code" $ generateUserPasswordOutput (UserPasswordMessage 3 [1, 2] [3, 4]) 5 `shouldBe` [3, 5]

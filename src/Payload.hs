@@ -1,4 +1,15 @@
-module Payload (NegotiationMessage (..), RequestMessage (..), parseNegotiationInput, parseRequestInput, generateNegotiationOutput, generateRequestOutput) where
+module Payload
+  ( NegotiationMessage (..),
+    RequestMessage (..),
+    UserPasswordMessage (..),
+    parseNegotiationInput,
+    parseRequestInput,
+    generateNegotiationOutput,
+    generateRequestOutput,
+    parseUserPasswordInput,
+    generateUserPasswordOutput,
+  )
+where
 
 import Data.Word (Word8)
 
@@ -14,6 +25,13 @@ data RequestMessage = RequestMessage
     requestAddressType :: Word8,
     requestAddress :: [Word8],
     requestPort :: [Word8]
+  }
+  deriving (Show, Eq)
+
+data UserPasswordMessage = UserPasswordMessage
+  { upVersion :: Word8,
+    upUser :: [Word8],
+    upPassword :: [Word8]
   }
   deriving (Show, Eq)
 
@@ -84,3 +102,28 @@ generateRequestOutput message code =
     build addrType = case addrType of
       3 -> [requestVersion message, code, 0, addrType, (fromIntegral $ length $ requestAddress message)] ++ (requestAddress message) ++ (requestPort message)
       _ -> [requestVersion message, code, 0, addrType] ++ (requestAddress message) ++ (requestPort message)
+
+parseUserPasswordInput :: [Word8] -> Either String UserPasswordMessage
+parseUserPasswordInput payload = do
+  if userNameSize + passwordSize + 3 /= length payload
+    then Left $ "Invalid payload size"
+    else
+      if userNameSize == 0
+        then Left "Invalid payload: no username given"
+        else
+          if passwordSize == 0
+            then Left "Invalid payload: no password given"
+            else Right $ UserPasswordMessage version username password
+  where
+    version = payload !! 0
+    userNameSize = fromIntegral $ payload !! 1
+    passwordOffset = userNameSize + 2
+    passwordSize =
+      if passwordOffset < length payload
+        then fromIntegral $ payload !! passwordOffset
+        else 0
+    username = take userNameSize $ drop 2 payload
+    password = take passwordSize $ drop (3 + userNameSize) payload
+
+generateUserPasswordOutput :: UserPasswordMessage -> Word8 -> [Word8]
+generateUserPasswordOutput message code = [upVersion message, code]
