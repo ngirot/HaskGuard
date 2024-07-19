@@ -50,7 +50,7 @@ onConnectionReceived authConf logger requestId sock clientAddr = do
     authenticate s content = do
       sendData s content
       authPayload <- receiveData s
-      let authenResult = manageAuthentication authConf authPayload
+      authenResult <- manageAuthentication authConf requestIdLogger authPayload
       case authenResult of
         Right ppp -> afterNegotiation s ppp
         Left (NoResponseError err) -> requestIdLogger $ "--- Closed: " ++ err
