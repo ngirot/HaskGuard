@@ -1,7 +1,8 @@
 module Protocol (findNegotiationReturnCode, findPort, findIp, findCommand, Command (..)) where
 
+import Config
 import qualified Data.ByteString.Internal as BS (w2c)
-import Data.List (intercalate)
+import Data.List (intercalate, intersect)
 import Data.Word (Word8)
 import Numeric (showHex)
 import Payload
@@ -9,11 +10,14 @@ import Payload
 data Command = Connect
   deriving (Eq, Show)
 
-findNegotiationReturnCode :: NegotiationMessage -> Either Word8 Word8
-findNegotiationReturnCode message =
-  if 0 `elem` negotiationMethods message
-    then Right 0
+findNegotiationReturnCode :: AuthenticationConfiguration -> NegotiationMessage -> Either Word8 Word8
+findNegotiationReturnCode config message = do
+  let commons = intersect allowed (negotiationMethods message)
+  if length commons > 0
+    then Right $ head commons
     else Left 255
+  where
+    allowed = (filter (\_ -> aucNoAuthentication config) [0]) ++ (filter (\_ -> aucUserPassword config) [2])
 
 findPort :: RequestMessage -> String
 findPort message = show $ (strong * 256 :: Int) + weak

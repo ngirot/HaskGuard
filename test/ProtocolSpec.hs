@@ -1,25 +1,53 @@
 module ProtocolSpec (spec) where
 
+import Config
 import Payload
 import Protocol
 import Test.Hspec
 
 spec :: Spec
 spec = do
-  findNegotiationReturnCodeSpec
+  findNegotiationForNoAuthenticationSpec
+  findNegotiationForUsernamePasswordSpec
+  findNegotiationForUnsupportedMethodsSpec
+  findNegotiationPrioritySpec
   findPortSpec
   findCommandSpec
   findIpSpec
 
-findNegotiationReturnCodeSpec :: Spec
-findNegotiationReturnCodeSpec =
-  describe "findNegotiationReturnCode" $ do
-    it "Should choose 'NO AUTHENTICATION REQUIRED' if available" $ findNegotiationReturnCode (NegotiationMessage 4 [0, 1, 2, 3]) `shouldBe` Right 0
-    it "GSSAPI is not supported" $ findNegotiationReturnCode (NegotiationMessage 4 [1]) `shouldBe` Left 255
-    it "USERNAME/PASSWORD is not supported" $ findNegotiationReturnCode (NegotiationMessage 4 [2]) `shouldBe` Left 255
-    it "IANA ASSIGNED are not supported" $ findNegotiationReturnCode (NegotiationMessage 4 [3 .. 127]) `shouldBe` Left 255
-    it "All RESERVED FOR PRIVATE METHODS are not supported" $ findNegotiationReturnCode (NegotiationMessage 4 [128 .. 255]) `shouldBe` Left 255
-    it "Should select error code 255 when no authentication methods are provided" $ findNegotiationReturnCode (NegotiationMessage 4 []) `shouldBe` Left 255
+findNegotiationForUsernamePasswordSpec :: Spec
+findNegotiationForUsernamePasswordSpec =
+  describe "findNegotiationReturnCode for 'USERNAME/PASSWORD' support" $ do
+    it "Should accept 'USERNAME/PASSWORD if configuration allows it" $ findNegotiationReturnCode (authConf True) (NegotiationMessage 4 [2]) `shouldBe` Right 2
+    it "Should reject 'USERNAME/PASSWORD if configuration does not allows it" $ findNegotiationReturnCode (authConf True) (NegotiationMessage 4 [2]) `shouldBe` Right 2
+  where
+    authConf b = AuthenticationConfiguration True b (Just "u") (Just "p")
+
+findNegotiationForNoAuthenticationSpec :: Spec
+findNegotiationForNoAuthenticationSpec =
+  describe "findNegotiationReturnCode for 'NO AUTHENTICATION REQUIRED' support" $ do
+    it "Should accept 'NO AUTHENTICATION REQUIRED' if configuration allows it" $ findNegotiationReturnCode (authConf True) (NegotiationMessage 4 [0]) `shouldBe` Right 0
+    it "Should reject 'NO AUTHENTICATION REQUIRED' if configuration does not allows it" $ findNegotiationReturnCode (authConf False) (NegotiationMessage 4 [0]) `shouldBe` Left 255
+  where
+    authConf b = AuthenticationConfiguration b True (Just "u") (Just "p")
+
+findNegotiationForUnsupportedMethodsSpec :: Spec
+findNegotiationForUnsupportedMethodsSpec =
+  describe "findNegotiationReturnCode unsupported methods" $ do
+    it "GSSAPI is not supported" $ findNegotiationReturnCode config (NegotiationMessage 4 [1]) `shouldBe` Left 255
+    it "IANA ASSIGNED are not supported" $ findNegotiationReturnCode config (NegotiationMessage 4 [3 .. 127]) `shouldBe` Left 255
+    it "All RESERVED FOR PRIVATE METHODS are not supported" $ findNegotiationReturnCode config (NegotiationMessage 4 [128 .. 255]) `shouldBe` Left 255
+    it "Should select error code 255 when no authentication methods are provided" $ findNegotiationReturnCode config (NegotiationMessage 4 []) `shouldBe` Left 255
+  where
+    config = AuthenticationConfiguration True True (Just "login") (Just "password")
+
+findNegotiationPrioritySpec :: Spec
+findNegotiationPrioritySpec =
+  describe "findNegotiationReturnCode selection priorities" $ do
+    it "Should choose no authentication over 'USERNAME/PASSWORD'" $ findNegotiationReturnCode config (NegotiationMessage 5 [0, 2]) `shouldBe` Right 0
+    it "Should choose no authentication over 'USERNAME/PASSWORD' even in another order" $ findNegotiationReturnCode config (NegotiationMessage 5 [2, 0]) `shouldBe` Right 0
+  where
+    config = AuthenticationConfiguration True True (Just "login") (Just "password")
 
 findPortSpec :: Spec
 findPortSpec =

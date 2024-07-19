@@ -25,7 +25,7 @@ spec = do
 launchTest :: Int -> [Communication] -> Expectation
 launchTest port communications = do
   serverPort <- getFreePort
-  let configuration = ServerConfiguration "localhost" serverPort
+  let configuration = ApplicationConfiguration {acServer = ServerConfiguration "localhost" serverPort, acAuthentication = AuthenticationConfiguration True False Nothing Nothing}
   signal <- newEmptyMVar
   signal2 <- newEmptyMVar
   signal3 <- newEmptyMVar

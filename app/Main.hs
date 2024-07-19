@@ -12,11 +12,11 @@ main = do
   loadedConf <- load
   let startupConfiguration = either (\_ -> defaultConfiguration) (\x -> x) loadedConf
 
-  initLogger (acLog startupConfiguration)
+  initLogger (gcLog startupConfiguration)
   requestLogger <- getLogger "HaskGuard"
 
   case loadedConf of
-    Right conf -> serve (acServer conf) (displayDebug requestLogger) (logStartup requestLogger)
+    Right conf -> serve (gcApplication conf) (displayDebug requestLogger) (logStartup requestLogger)
     Left (ConfigurationNotAccessible e) -> displayError requestLogger $ "Unable to load configuration " ++ show e
     Left (BadConfiguration e) -> displayError requestLogger $ "Bad configuration " ++ show e
 

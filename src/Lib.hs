@@ -17,25 +17,27 @@ import Request
 import Streaming (stream)
 import System.Random
 
-serve :: ServerConfiguration -> (String -> IO ()) -> ([String] -> [String] -> IO ()) -> IO ()
+serve :: ApplicationConfiguration -> (String -> IO ()) -> ([String] -> [String] -> IO ()) -> IO ()
 serve configuration logger onStartup = do
-  threads <- mapM (startOne configuration talk) [IpV4, IpV6]
+  threads <- mapM (startOne serverConfiguration talk) [IpV4, IpV6]
 
   hostsStarted <- mapM takeMVar $ snd <$> threads
   onStartup (lefts hostsStarted) (rights hostsStarted)
 
   mapM_ wait $ fst <$> threads
   where
+    serverConfiguration = acServer configuration
+    authenticationConfiguration = acAuthentication configuration
     talk sock clientAddr = do
       uuid <- newUUID
-      onConnectionReceived logger uuid sock clientAddr
+      onConnectionReceived authenticationConfiguration logger uuid sock clientAddr
 
-onConnectionReceived :: (String -> IO ()) -> UUID -> Socket -> SockAddr -> IO ()
-onConnectionReceived logger requestId sock clientAddr = do
+onConnectionReceived :: AuthenticationConfiguration -> (String -> IO ()) -> UUID -> Socket -> SockAddr -> IO ()
+onConnectionReceived authConf logger requestId sock clientAddr = do
   requestIdLogger $ "+++ Opened from " ++ show clientAddr
   msgNegotiation <- receiveData sock
 
-  let negotiation = manageNegotiation msgNegotiation
+  let negotiation = manageNegotiation authConf msgNegotiation
   case negotiation of
     NoAuthenticationResult d -> afterNegotiation sock d
     UsernamePasswordResult d -> authenticate sock d
@@ -48,7 +50,7 @@ onConnectionReceived logger requestId sock clientAddr = do
     authenticate s content = do
       sendData s content
       authPayload <- receiveData s
-      let authenResult = manageAuthentication authPayload
+      let authenResult = manageAuthentication authConf authPayload
       case authenResult of
         Right ppp -> afterNegotiation s ppp
         Left (NoResponseError err) -> requestIdLogger $ "--- Closed: " ++ err
