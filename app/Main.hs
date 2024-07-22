@@ -10,9 +10,11 @@ import System.Log.Logger
 main :: IO ()
 main = do
   loadedConf <- load
-  let startupConfiguration = either (\_ -> defaultConfiguration) (\x -> x) loadedConf
+  startupConfiguration <- case loadedConf of
+    Right c -> pure $ gcLog c
+    Left _ -> pure defaultLogConfiguration
 
-  initLogger (gcLog startupConfiguration)
+  initLogger (startupConfiguration)
   requestLogger <- getLogger "HaskGuard"
 
   case loadedConf of

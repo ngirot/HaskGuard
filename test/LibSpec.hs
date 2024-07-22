@@ -11,6 +11,7 @@ import Network
 import Network.Socket.ByteString (recv, sendAll)
 import Network.Socket.Free
 import Test.Hspec
+import UserCsv
 
 data Communication = Communication
   { comSend :: [Word8],
@@ -25,7 +26,7 @@ spec = do
 launchTest :: Int -> [Communication] -> Expectation
 launchTest port communications = do
   serverPort <- getFreePort
-  let configuration = ApplicationConfiguration {acServer = ServerConfiguration "localhost" serverPort, acAuthentication = AuthenticationConfiguration True True (Just "user") (Just "password")}
+  let configuration = ApplicationConfiguration {acServer = ServerConfiguration "localhost" serverPort, acAuthentication = AuthenticationConfiguration True True [Credentials "user" "password"]}
   signal <- newEmptyMVar
   signal2 <- newEmptyMVar
   signal3 <- newEmptyMVar
@@ -131,6 +132,16 @@ connect =
             Communication ([5, 1, 0, 1, 127, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 1, 127, 0, 0, 1] ++ portInBinary),
             Communication [1] [2]
           ]
+      it "Should use authentication by username and password" $ do
+              port <- freePort
+              let portInBinary = toWord8 port
+              launchTest
+                port
+                [ Communication [5, 1, 2] [5, 2],
+                  Communication [1, 4, 117, 115, 101, 114, 8, 112, 97, 115, 115, 119, 111, 114, 100] [1, 0],
+                  Communication ([5, 1, 0, 1, 127, 0, 0, 1] ++ portInBinary) ([5, 0, 0, 1, 127, 0, 0, 1] ++ portInBinary),
+                  Communication [1] [2]
+                ]
       it "Should reject invalid user/passwords" $ do
         port <- freePort
         launchTest

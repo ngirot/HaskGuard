@@ -4,6 +4,7 @@ import Config
 import Payload
 import Protocol
 import Test.Hspec
+import UserCsv
 
 spec :: Spec
 spec = do
@@ -21,7 +22,7 @@ findNegotiationForUsernamePasswordSpec =
     it "Should accept 'USERNAME/PASSWORD if configuration allows it" $ findNegotiationReturnCode (authConf True) (NegotiationMessage 4 [2]) `shouldBe` Right 2
     it "Should reject 'USERNAME/PASSWORD if configuration does not allows it" $ findNegotiationReturnCode (authConf True) (NegotiationMessage 4 [2]) `shouldBe` Right 2
   where
-    authConf b = AuthenticationConfiguration True b (Just "u") (Just "p")
+    authConf b = AuthenticationConfiguration True b [Credentials "u" "p"]
 
 findNegotiationForNoAuthenticationSpec :: Spec
 findNegotiationForNoAuthenticationSpec =
@@ -29,7 +30,7 @@ findNegotiationForNoAuthenticationSpec =
     it "Should accept 'NO AUTHENTICATION REQUIRED' if configuration allows it" $ findNegotiationReturnCode (authConf True) (NegotiationMessage 4 [0]) `shouldBe` Right 0
     it "Should reject 'NO AUTHENTICATION REQUIRED' if configuration does not allows it" $ findNegotiationReturnCode (authConf False) (NegotiationMessage 4 [0]) `shouldBe` Left 255
   where
-    authConf b = AuthenticationConfiguration b True (Just "u") (Just "p")
+    authConf b = AuthenticationConfiguration b True [Credentials "u" "p"]
 
 findNegotiationForUnsupportedMethodsSpec :: Spec
 findNegotiationForUnsupportedMethodsSpec =
@@ -39,7 +40,7 @@ findNegotiationForUnsupportedMethodsSpec =
     it "All RESERVED FOR PRIVATE METHODS are not supported" $ findNegotiationReturnCode config (NegotiationMessage 4 [128 .. 255]) `shouldBe` Left 255
     it "Should select error code 255 when no authentication methods are provided" $ findNegotiationReturnCode config (NegotiationMessage 4 []) `shouldBe` Left 255
   where
-    config = AuthenticationConfiguration True True (Just "login") (Just "password")
+    config = AuthenticationConfiguration True True [Credentials "login" "password"]
 
 findNegotiationPrioritySpec :: Spec
 findNegotiationPrioritySpec =
@@ -47,7 +48,7 @@ findNegotiationPrioritySpec =
     it "Should choose no authentication over 'USERNAME/PASSWORD'" $ findNegotiationReturnCode config (NegotiationMessage 5 [0, 2]) `shouldBe` Right 0
     it "Should choose no authentication over 'USERNAME/PASSWORD' even in another order" $ findNegotiationReturnCode config (NegotiationMessage 5 [2, 0]) `shouldBe` Right 0
   where
-    config = AuthenticationConfiguration True True (Just "login") (Just "password")
+    config = AuthenticationConfiguration True True [Credentials "login" "password"]
 
 findPortSpec :: Spec
 findPortSpec =
