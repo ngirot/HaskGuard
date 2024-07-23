@@ -12,5 +12,5 @@ load = do
 
   case content of
     Right fileContent -> left BadConfiguration <$> parseConfig fileContent
-    Left FileDoesNotExists -> left (\e -> BadConfiguration e) <$> defaultConfiguration
+    Left FileDoesNotExists -> left BadConfiguration <$> defaultConfiguration
     Left err -> pure $ Left $ ConfigurationNotAccessible ("Unable to load configuration file " ++ (show err))
