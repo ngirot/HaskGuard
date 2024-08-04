@@ -12,7 +12,7 @@ import System.Random
 
 serve :: ApplicationConfiguration -> (String -> IO ()) -> ([String] -> [String] -> IO ()) -> IO ()
 serve configuration logger onStartup = do
-  threads <- mapM (startOne serverConfiguration talk) [IpV4, IpV6]
+  threads <- mapM (startOneServer serverConfiguration talk) [IpV4, IpV6]
 
   hostsStarted <- mapM takeMVar $ snd <$> threads
   onStartup (lefts hostsStarted) (rights hostsStarted)
@@ -43,8 +43,8 @@ normalizeListen IpV6 "0.0.0.0" = "::"
 normalizeListen IpV4 "::" = "0.0.0.0"
 normalizeListen _ host = host
 
-startOne :: ServerConfiguration -> (Socket -> SockAddr -> IO ()) -> IpType -> IO ((Async (Either String ()), MVar (Either String String)))
-startOne configuration fn ipType = do
+startOneServer :: ServerConfiguration -> (Socket -> SockAddr -> IO ()) -> IpType -> IO ((Async (Either String ()), MVar (Either String String)))
+startOneServer configuration fn ipType = do
   mVar <- newEmptyMVar
   threadId <- async $ runTCPServer ipType (normalizeListen ipType $ scListen configuration) (show $ scPort configuration) (putMVar mVar) fn
   pure $ (threadId, mVar)
