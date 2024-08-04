@@ -1,20 +1,13 @@
 module Lib (serve) where
 
-import Authentication
 import Config
 import Control.Concurrent
 import Control.Concurrent.Async
-import qualified Data.ByteString as S
 import Data.Either
 import Data.UUID
-import Data.Word (Word8)
-import Errors
-import Negotiation (NegotiationResult (..), manageNegotiation)
 import Network
 import Network.Socket
-import Network.Socket.ByteString (recv, sendAll)
-import Request
-import Streaming (stream)
+import Step
 import System.Random
 
 serve :: ApplicationConfiguration -> (String -> IO ()) -> ([String] -> [String] -> IO ()) -> IO ()
@@ -34,45 +27,16 @@ serve configuration logger onStartup = do
 
 onConnectionReceived :: AuthenticationConfiguration -> (String -> IO ()) -> UUID -> Socket -> SockAddr -> IO ()
 onConnectionReceived authConf logger requestId sock clientAddr = do
-  requestIdLogger $ "+++ Opened from " ++ show clientAddr
-  msgNegotiation <- receiveData sock
-
-  let negotiation = manageNegotiation authConf msgNegotiation
-  case negotiation of
-    NoAuthenticationResult d -> afterNegotiation sock d
-    UsernamePasswordResult d -> authenticate sock d
-    NegotiationError (NoResponseError err) -> requestIdLogger $ "--- Closed with Error: " ++ err
-    NegotiationError (ResponseError response) -> sendData sock response
+  let firstStep = Just $ OPEN $ show clientAddr
+  onProcessStep firstStep authConf sock requestIdLogger
   where
     requestIdLogger msg = logger $ "[" ++ show requestId ++ "] " ++ msg
-    sendData = logSender requestIdLogger
-    receiveData = logReceiver requestIdLogger
-    authenticate s content = do
-      sendData s content
-      authPayload <- receiveData s
-      authenResult <- manageAuthentication authConf requestIdLogger authPayload
-      case authenResult of
-        Right ppp -> afterNegotiation s ppp
-        Left (NoResponseError err) -> requestIdLogger $ "--- Closed: " ++ err
-        Left (ResponseError response) -> do
-          sendData s response
-          requestIdLogger "--- Closed"
 
-    afterNegotiation s content = do
-      sendData s content
-
-      msgRequest <- receiveData s
-      req <- manageRequest requestIdLogger msgRequest (onConnect s)
-      case req of
-        Right _ -> requestIdLogger "--- Closed"
-        Left (NoResponseError err) -> requestIdLogger $ "--- Closed: " ++ err
-        Left (ResponseError response) -> do
-          sendData s response
-          requestIdLogger "--- Closed"
-    onConnect socketSource content socketDestination = do
-      sendData socketSource content
-      _ <- forkIO $ stream (\msg -> requestIdLogger $ "|>>" ++ msg) socketSource socketDestination
-      stream (\msg -> requestIdLogger $ "|<<" ++ msg) socketDestination socketSource
+onProcessStep :: Maybe Step -> AuthenticationConfiguration -> Socket -> (String -> IO ()) -> IO ()
+onProcessStep Nothing _ _ _ = return ()
+onProcessStep (Just step) authConf sock logger = do
+  nextStep <- processStep step authConf sock logger
+  onProcessStep nextStep authConf sock logger
 
 normalizeListen :: IpType -> String -> String
 normalizeListen IpV6 "0.0.0.0" = "::"
@@ -84,17 +48,6 @@ startOne configuration fn ipType = do
   mVar <- newEmptyMVar
   threadId <- async $ runTCPServer ipType (normalizeListen ipType $ scListen configuration) (show $ scPort configuration) (putMVar mVar) fn
   pure $ (threadId, mVar)
-
-logSender :: (String -> IO ()) -> Socket -> [Word8] -> IO ()
-logSender logger sock dataToSend = do
-  logger $ "<<< " ++ show dataToSend
-  sendAll sock $ S.pack dataToSend
-
-logReceiver :: (String -> IO ()) -> Socket -> IO ([Word8])
-logReceiver logger sock = do
-  content <- S.unpack <$> recv sock 4096
-  logger $ ">>> " ++ show content
-  return content
 
 newUUID :: IO UUID
 newUUID = randomIO
