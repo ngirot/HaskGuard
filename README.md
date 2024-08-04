@@ -8,7 +8,7 @@ Features
 
 - Dual-Stack Support: Fully supports both IPv4 and IPv6. 
 - SOCKS5 Protocol: Comprehensive implementation of the SOCKS5 protocol as per RFC 1928.
-- Authentication: no authentication is implemented yet.
+- Authentication: Only username/password authentication is implemented (No support for GSS-API).
 - Commands: Supports CONNECT only yet (no support for BIND, and UDP ASSOCIATE).
 - Concurrency: Manages multiple simultaneous connections using Haskell's lightweight concurrency.
 - Logging: Detailed and configurable logging for monitoring and debugging.
